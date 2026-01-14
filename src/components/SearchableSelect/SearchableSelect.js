@@ -143,7 +143,6 @@ const SearchableSelect = ({
               ×
             </button>
           )}
-          <span className={`arrow-icon ${isOpen ? 'open' : ''}`}>▼</span>
         </div>
       </div>
 
@@ -166,7 +165,7 @@ const SearchableSelect = ({
                   )}
                 </div>
                 {option.value === value && (
-                  <span className="check-icon">✓</span>
+                  <span className="check-mark">✓</span>
                 )}
               </div>
             ))}
@@ -183,7 +182,6 @@ const SearchableSelect = ({
             }}
           >
             <div className="create-new-content">
-              <span className="create-new-icon">➕</span>
               <div>
                 <div className="create-new-label">Créer un nouveau client</div>
                 <div className="create-new-name">"{searchTerm}"</div>

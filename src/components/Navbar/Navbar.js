@@ -7,11 +7,12 @@ const Navbar = () => {
   const location = useLocation();
 
   const navItems = [
-    { path: '/', label: 'Tableau de Bord', icon: '📊' },
-    { path: '/clients', label: 'Clients', icon: '👥' },
-    { path: '/ventes', label: 'Ventes', icon: '💰' },
-    { path: '/devis', label: 'Devis', icon: '📄' },
-    { path: '/factures', label: 'Factures', icon: '🧾' },
+    { path: '/', label: 'Tableau de Bord' },
+    { path: '/clients', label: 'Clients' },
+    { path: '/ventes', label: 'Ventes' },
+    { path: '/devis', label: 'Devis' },
+    { path: '/factures', label: 'Factures' },
+    { path: '/parametres', label: 'Paramètres' },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -20,7 +21,6 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-container">
         <div className="navbar-brand">
-          <span className="brand-icon">💧</span>
           <span className="brand-name">Gestion Eau</span>
         </div>
 
@@ -28,7 +28,7 @@ const Navbar = () => {
           className="mobile-menu-button"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
-          <span className="hamburger-icon">☰</span>
+          <span className="hamburger-text">MENU</span>
         </button>
 
         <div className={`navbar-menu ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
@@ -39,7 +39,6 @@ const Navbar = () => {
               className={`nav-link ${isActive(item.path) ? 'active' : ''}`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              <span className="nav-icon">{item.icon}</span>
               <span className="nav-label">{item.label}</span>
             </Link>
           ))}

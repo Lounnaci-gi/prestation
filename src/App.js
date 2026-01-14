@@ -7,6 +7,7 @@ import Clients from './pages/Clients';
 import Ventes from './pages/Ventes';
 import Devis from './pages/Devis';
 import Factures from './pages/Factures';
+import Parametres from './pages/Parametres';
 import './App.css';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
             <Route path="/ventes" element={<Ventes />} />
             <Route path="/devis" element={<Devis />} />
             <Route path="/factures" element={<Factures />} />
+            <Route path="/parametres" element={<Parametres />} />
           </Routes>
         </Layout>
       </div>

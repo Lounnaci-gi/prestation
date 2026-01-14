@@ -44,7 +44,7 @@ const DevisForm = ({ onSubmit, onCancel }) => {
   ];
 
   const typesDossier = [
-    { value: 'VENTE', label: 'Vente' },
+    { value: 'VENTE', label: 'Citernage' },
     { value: 'PROCES_VOL', label: 'Procès de Vol' },
     { value: 'ESSAI_RESEAU', label: 'Essai Réseau' },
   ];
@@ -55,15 +55,14 @@ const DevisForm = ({ onSubmit, onCancel }) => {
     // If client is selected, populate client fields
     if (name === 'clientId' && value) {
       if (value === 'new') {
-        // Create new client
+        // Create new client - code must be entered manually
         setIsCreatingNewClient(true);
-        const newCode = `CLI${String(clients.length).padStart(3, '0')}`;
         // Get the searched name from the event
         const searchedName = e.target.searchedName || '';
         setFormData(prev => ({
           ...prev,
           clientId: 'new',
-          codeClient: newCode,
+          codeClient: '', // Empty - must be entered manually
           nomRaisonSociale: searchedName,
           adresse: '',
           telephone: '',
@@ -85,10 +84,18 @@ const DevisForm = ({ onSubmit, onCancel }) => {
         }
       }
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
+      // Convert codeClient to uppercase when typing
+      if (name === 'codeClient') {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value.toUpperCase()
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value
+        }));
+      }
     }
     
     // Clear error when user starts typing
@@ -103,17 +110,22 @@ const DevisForm = ({ onSubmit, onCancel }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.clientId) newErrors.clientId = 'Client requis';
-    if (!formData.nomRaisonSociale) newErrors.nomRaisonSociale = 'Nom/Raison sociale requis';
-    if (!formData.adresse) newErrors.adresse = 'Adresse requise';
-    if (!formData.typeDossier) newErrors.typeDossier = 'Type de dossier requis';
-    if (!formData.nombreCiternes || formData.nombreCiternes < 1) {
+    if (!formData.typeDossier) newErrors.typeDossier = 'Type de devis requis';
+    if (formData.typeDossier && !formData.clientId) newErrors.clientId = 'Client requis';
+    if (formData.clientId && !formData.codeClient) {
+      newErrors.codeClient = 'Code client requis';
+    } else if (formData.clientId && formData.codeClient && formData.codeClient.length !== 6) {
+      newErrors.codeClient = 'Le code client doit contenir exactement 6 caractères';
+    }
+    if (formData.clientId && !formData.nomRaisonSociale) newErrors.nomRaisonSociale = 'Nom/Raison sociale requis';
+    if (formData.clientId && !formData.adresse) newErrors.adresse = 'Adresse requise';
+    if (formData.typeDossier && (!formData.nombreCiternes || formData.nombreCiternes < 1)) {
       newErrors.nombreCiternes = 'Nombre de citernes invalide';
     }
-    if (!formData.volumeParCiterne || formData.volumeParCiterne < 1 || formData.volumeParCiterne > 500) {
+    if (formData.typeDossier && (!formData.volumeParCiterne || formData.volumeParCiterne < 1 || formData.volumeParCiterne > 500)) {
       newErrors.volumeParCiterne = 'Volume doit être entre 1 et 500 m³';
     }
-    if (!formData.prixUnitaireM3_HT || formData.prixUnitaireM3_HT <= 0) {
+    if (formData.typeDossier && (!formData.prixUnitaireM3_HT || formData.prixUnitaireM3_HT <= 0)) {
       newErrors.prixUnitaireM3_HT = 'Prix unitaire requis';
     }
 
@@ -182,19 +194,8 @@ const DevisForm = ({ onSubmit, onCancel }) => {
           <h3 className="section-title">Informations Générales</h3>
         </div>
         <div className="form-grid">
-          <SearchableSelect
-            label="Client"
-            name="clientId"
-            value={formData.clientId}
-            onChange={handleChange}
-            options={clients}
-            placeholder="Tapez pour rechercher un client..."
-            required
-            error={errors.clientId}
-          />
-
           <Select
-            label="Type de Dossier"
+            label="Type de Devis"
             name="typeDossier"
             value={formData.typeDossier}
             onChange={handleChange}
@@ -204,26 +205,41 @@ const DevisForm = ({ onSubmit, onCancel }) => {
             error={errors.typeDossier}
           />
 
-          <Input
-            label="Date du Devis"
-            type="date"
-            name="dateDevis"
-            value={formData.dateDevis}
-            onChange={handleChange}
-            required
-          />
+          {formData.typeDossier && (
+            <>
+              <SearchableSelect
+                label="Client"
+                name="clientId"
+                value={formData.clientId}
+                onChange={handleChange}
+                options={clients}
+                placeholder="Tapez pour rechercher un client..."
+                required
+                error={errors.clientId}
+              />
 
-          <Select
-            label="Statut"
-            name="statut"
-            value={formData.statut}
-            onChange={handleChange}
-            options={[
-              { value: 'EN ATTENTE', label: 'En Attente' },
-              { value: 'ACCEPTE', label: 'Accepté' },
-              { value: 'REFUSE', label: 'Refusé' },
-            ]}
-          />
+              <Input
+                label="Date du Devis"
+                type="date"
+                name="dateDevis"
+                value={formData.dateDevis}
+                onChange={handleChange}
+                required
+              />
+
+              <Select
+                label="Statut"
+                name="statut"
+                value={formData.statut}
+                onChange={handleChange}
+                options={[
+                  { value: 'EN ATTENTE', label: 'En Attente' },
+                  { value: 'ACCEPTE', label: 'Accepté' },
+                  { value: 'REFUSE', label: 'Refusé' },
+                ]}
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -245,6 +261,11 @@ const DevisForm = ({ onSubmit, onCancel }) => {
               value={formData.codeClient}
               onChange={handleChange}
               disabled={!isCreatingNewClient}
+              required={isCreatingNewClient}
+              error={errors.codeClient}
+              placeholder={isCreatingNewClient ? "6 caractères (ex: CLI001)" : ""}
+              maxLength="6"
+              style={{ textTransform: 'uppercase' }}
             />
 
             <Input
@@ -255,7 +276,7 @@ const DevisForm = ({ onSubmit, onCancel }) => {
               onChange={handleChange}
               required
               error={errors.nomRaisonSociale}
-              placeholder={isCreatingNewClient ? "Entrez le nom du client" : ""}
+              placeholder={isCreatingNewClient ? "Nom & prenom ou Raison Sociale" : ""}
             />
 
             <Input
@@ -291,6 +312,7 @@ const DevisForm = ({ onSubmit, onCancel }) => {
           </div>
         </div>
       )}
+
 
       <div className="form-section">
         <div className="section-header">

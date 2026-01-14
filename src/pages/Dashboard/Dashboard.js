@@ -56,9 +56,6 @@ const Dashboard = () => {
         {stats.map((stat, index) => (
           <Card key={index} className="stat-card">
             <div className="stat-content">
-              <div className="stat-icon" style={{ backgroundColor: `${stat.color}20` }}>
-                <span style={{ color: stat.color }}>{stat.icon}</span>
-              </div>
               <div className="stat-details">
                 <p className="stat-title">{stat.title}</p>
                 <h2 className="stat-value">{stat.value}</h2>
