@@ -1,0 +1,52 @@
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import './Navbar.css';
+
+const Navbar = () => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  const navItems = [
+    { path: '/', label: 'Tableau de Bord', icon: '📊' },
+    { path: '/clients', label: 'Clients', icon: '👥' },
+    { path: '/ventes', label: 'Ventes', icon: '💰' },
+    { path: '/devis', label: 'Devis', icon: '📄' },
+    { path: '/factures', label: 'Factures', icon: '🧾' },
+  ];
+
+  const isActive = (path) => location.pathname === path;
+
+  return (
+    <nav className="navbar">
+      <div className="navbar-container">
+        <div className="navbar-brand">
+          <span className="brand-icon">💧</span>
+          <span className="brand-name">Gestion Eau</span>
+        </div>
+
+        <button 
+          className="mobile-menu-button"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          <span className="hamburger-icon">☰</span>
+        </button>
+
+        <div className={`navbar-menu ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`nav-link ${isActive(item.path) ? 'active' : ''}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+export default Navbar;
