@@ -3,6 +3,7 @@ import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Table from '../../components/Table';
 import DevisForm from '../../components/DevisForm';
+import AlertService from '../../utils/alertService';
 import './Devis.css';
 
 const Devis = () => {
@@ -13,7 +14,7 @@ const Devis = () => {
     { id: 3, code: 'DEV-2026-003', client: 'Client DEF', date: '2026-01-12', montant: '28,000 DZD', statut: 'REFUSE' },
   ]);
 
-  const handleCreateDevis = (devisData) => {
+  const handleCreateDevis = async (devisData) => {
     // Generate new code
     const newCode = `DEV-2026-${String(mockDevis.length + 1).padStart(3, '0')}`;
     
@@ -42,11 +43,20 @@ const Devis = () => {
     setShowForm(false);
     
     // Show success message
-    alert('Devis créé avec succès!');
+    await AlertService.success('Devis créé', 'Le devis a été créé avec succès!');
   };
 
-  const handleCancel = () => {
-    setShowForm(false);
+  const handleCancel = async () => {
+    const result = await AlertService.confirm(
+      'Annuler la création',
+      'Êtes-vous sûr de vouloir annuler la création du devis ?',
+      'Annuler',
+      'Continuer'
+    );
+    
+    if (result.isConfirmed) {
+      setShowForm(false);
+    }
   };
 
   const columns = [

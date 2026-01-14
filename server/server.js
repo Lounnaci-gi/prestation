@@ -1,0 +1,368 @@
+require('dotenv').config();
+const express = require('express');
+const { Connection, Request, TYPES } = require('tedious');
+const cors = require('cors');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Configuration de la base de données depuis les variables d'environnement
+const config = {
+  server: process.env.DB_SERVER || 'localhost',
+  authentication: {
+    type: 'default',
+    options: {
+      userName: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD
+    }
+  },
+  options: {
+    database: process.env.DB_NAME || 'GestionEau',
+    encrypt: process.env.DB_ENCRYPT === 'true',
+    trustServerCertificate: true,
+    useUTC: true,
+    enableArithAbort: true
+  }
+};
+
+console.log(`Tentative de connexion à la base de données ${config.options.database} avec l'utilisateur ${config.authentication.options.userName}...`);
+
+// Connexion à la base de données
+const connection = new Connection(config);
+let isConnected = false;
+
+// Essayer de se connecter immédiatement
+connection.connect((err) => {
+  if (err) {
+    console.error('Erreur de connexion à la base de données:', err.message);
+    isConnected = false;
+  } else {
+    console.log('Connexion réussie à la base de données SQL Server');
+    isConnected = true;
+  }
+});
+
+// Gestion des erreurs de connexion
+connection.on('end', () => {
+  console.log('Connexion à la base de données fermée');
+  isConnected = false;
+});
+
+connection.on('error', (err) => {
+  console.error('Erreur de connexion à la base de données:', err);
+  isConnected = false;
+});
+
+// Fonction utilitaire pour exécuter des requêtes avec gestion d'erreurs
+const executeQuery = (query, params, callback) => {
+  if (!isConnected) {
+    callback(new Error('Connexion à la base de données non disponible'), null);
+    return;
+  }
+
+  const request = new Request(query, (err) => {
+    if (err) {
+      console.error('Erreur lors de l\'exécution de la requête:', err);
+      callback(err, null);
+      return;
+    }
+  });
+
+  // Ajouter les paramètres à la requête avec les types TEDIOUS corrects
+  params.forEach((param) => {
+    let tediousType;
+    
+    // Convertir les types string en objets TEDIOUS
+    switch(param.type.toLowerCase()) {
+      case 'varchar':
+      case 'nvarchar':
+        tediousType = TYPES.VarChar;
+        break;
+      case 'int':
+        tediousType = TYPES.Int;
+        break;
+      case 'float':
+        tediousType = TYPES.Float;
+        break;
+      case 'datetime':
+        tediousType = TYPES.DateTime;
+        break;
+      case 'decimal':
+        // Pour les types décimaux, on spécifie la précision et l'échelle
+        tediousType = TYPES.Decimal;
+        // Ajouter les propriétés precision et scale
+        request.addParameter(param.name, tediousType, param.value, { precision: 18, scale: 4 });
+        return; // Sortir après avoir ajouté le paramètre avec précision
+      default:
+        tediousType = TYPES.VarChar; // Par défaut
+        console.warn(`Type inconnu: ${param.type}, utilisation de VarChar`);
+    }
+    
+    request.addParameter(param.name, tediousType, param.value);
+  });
+
+  let results = [];
+  request.on('row', (columns) => {
+    let row = {};
+    columns.forEach((column) => {
+      row[column.metadata.colName] = column.value;
+    });
+    results.push(row);
+  });
+
+  request.on('requestCompleted', () => {
+    callback(null, results);
+  });
+
+  connection.execSql(request);
+};
+
+// Endpoint pour récupérer tous les tarifs de la table Tarifs_Historique
+app.get('/api/tarifs-historique', (req, res) => {
+  if (!isConnected) {
+    return res.json([]);
+  }
+
+  const query = 'SELECT * FROM Tarifs_Historique ORDER BY DateDebut DESC';
+  
+  executeQuery(query, [], (err, results) => {
+    if (err) {
+      console.error('Erreur lors de la récupération des tarifs:', err);
+      res.status(500).json({ error: 'Erreur lors de la récupération des tarifs' });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+// Endpoint pour ajouter un nouveau tarif dans la table Tarifs_Historique
+app.post('/api/tarifs-historique', async (req, res) => {
+  const { TypePrestation, PrixHT, TauxTVA, DateDebut, VolumeReference } = req.body;
+
+  // Validation des données requises
+  if (!TypePrestation || !PrixHT || !TauxTVA) {
+    return res.status(400).json({ error: 'TypePrestation, PrixHT et TauxTVA sont requis' });
+  }
+
+  try {
+    // FAIRE LA CONVERSION IMMÉDIATEMENT AU DÉBUT
+    const typePrestationDB = TypePrestation.trim().toUpperCase() === 'VENTE' ? 'CITERNAGE' : TypePrestation.trim();
+    
+    // Méthode radicale : charger TOUS les tarifs et vérifier en JS
+    const getAllQuery = 'SELECT TarifID, TypePrestation, PrixHT, TauxTVA, DateDebut, DateFin FROM Tarifs_Historique';
+    const allTarifs = await new Promise((resolve, reject) => {
+      executeQuery(getAllQuery, [], (err, results) => {
+        if (err) reject(err);
+        else resolve(results || []);
+      });
+    });
+
+    // Nettoyer le type de prestation pour la comparaison
+    const cleanInputType = typePrestationDB.toUpperCase();
+
+    // Vérifier les doublons - PLUS STRICT
+    const existingTarif = allTarifs.find(tarif => {
+      const cleanDbType = (tarif.TypePrestation || '').trim().toUpperCase();
+      const isActive = !tarif.DateFin || new Date(tarif.DateFin) > new Date();
+      
+      const isMatch = cleanDbType === cleanInputType && isActive;
+      
+      return isMatch;
+    });
+
+    if (existingTarif) {
+      return res.status(409).json({ 
+        error: `Un tarif pour "${TypePrestation}" existe déjà (ID: ${existingTarif.TarifID})`,
+        existingTarif: existingTarif,
+        code: 'DUPLICATE_TARIFF'
+      });
+    }
+
+    // Conversion et validation des valeurs numériques
+    const prixHT = parseFloat(parseFloat(PrixHT).toFixed(2));
+    let tauxTVAInput = parseFloat(TauxTVA);
+    let tauxTVA;
+    
+    if (tauxTVAInput > 10) {
+      tauxTVA = parseFloat((tauxTVAInput / 100).toFixed(4));
+    } else {
+      tauxTVA = parseFloat(tauxTVAInput.toFixed(4));
+    }
+    
+    const volumeRef = VolumeReference ? parseInt(VolumeReference) : null;
+
+    // Validation
+    if (isNaN(prixHT) || prixHT <= 0 || prixHT > 999999999999999.99) {
+      return res.status(400).json({ 
+        error: 'Prix HT invalide. Doit être un nombre positif inférieur à 999,999,999,999,999.99' 
+      });
+    }
+    
+    if (isNaN(tauxTVA) || tauxTVA < 0 || tauxTVA > 99.9999) {
+      return res.status(400).json({ 
+        error: 'Taux TVA invalide. Doit être un nombre entre 0 et 99.9999' 
+      });
+    }
+
+    // Construction de la requête (typePrestationDB est déjà converti)
+    let query, params;
+    if (volumeRef !== null) {
+      query = `
+        INSERT INTO Tarifs_Historique (TypePrestation, VolumeReference, PrixHT, TauxTVA, DateDebut)
+        OUTPUT INSERTED.*
+        VALUES (@TypePrestation, @VolumeReference, @PrixHT, @TauxTVA, @DateDebut)
+      `;
+      
+      params = [
+        { name: 'TypePrestation', type: 'varchar', value: typePrestationDB },
+        { name: 'VolumeReference', type: 'int', value: volumeRef },
+        { name: 'PrixHT', type: 'decimal', value: prixHT },
+        { name: 'TauxTVA', type: 'decimal', value: tauxTVA },
+        { name: 'DateDebut', type: 'datetime', value: new Date(DateDebut) }
+      ];
+    } else {
+      query = `
+        INSERT INTO Tarifs_Historique (TypePrestation, PrixHT, TauxTVA, DateDebut)
+        OUTPUT INSERTED.*
+        VALUES (@TypePrestation, @PrixHT, @TauxTVA, @DateDebut)
+      `;
+      
+      params = [
+        { name: 'TypePrestation', type: 'varchar', value: typePrestationDB },
+        { name: 'PrixHT', type: 'decimal', value: prixHT },
+        { name: 'TauxTVA', type: 'decimal', value: tauxTVA },
+        { name: 'DateDebut', type: 'datetime', value: new Date(DateDebut) }
+      ];
+    }
+
+    const insertResults = await new Promise((resolve, reject) => {
+      executeQuery(query, params, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (insertResults && insertResults.length > 0) {
+      res.status(201).json(insertResults[0]);
+    } else {
+      res.status(500).json({ error: 'Aucun tarif n\'a été ajouté' });
+    }
+
+  } catch (error) {
+    console.error('ERREUR FATALE:', error);
+    res.status(500).json({ 
+      error: 'Erreur lors de l\'ajout du tarif',
+      details: error.message
+    });
+  }
+});
+
+// Endpoint pour mettre à jour un tarif dans la table Tarifs_Historique
+app.put('/api/tarifs-historique/:id', (req, res) => {
+  const { id } = req.params;
+  const { TypePrestation, PrixHT, TauxTVA, DateDebut } = req.body;
+
+  // Validation de l'ID
+  if (!id || isNaN(parseInt(id))) {
+    return res.status(400).json({ error: 'ID invalide' });
+  }
+
+  // Conversion automatique du taux TVA : si > 10, on le divise par 100 (ex: 19 -> 0.19)
+  let tauxTVAInput = parseFloat(TauxTVA);
+  let tauxTVA;
+  
+  if (tauxTVAInput > 10) {
+    // Si le taux est supérieur à 10, on suppose que c'est un pourcentage (ex: 19%)
+    tauxTVA = parseFloat((tauxTVAInput / 100).toFixed(4));
+  } else {
+    // Sinon on le laisse tel quel (ex: 0.19)
+    tauxTVA = parseFloat(tauxTVAInput.toFixed(4));
+  }
+
+  const query = `
+    UPDATE Tarifs_Historique
+    SET TypePrestation = @param0, PrixHT = @param1, TauxTVA = @param2, DateDebut = @param3
+    OUTPUT INSERTED.*
+    WHERE TarifID = @param4
+  `;
+
+  const params = [
+    { name: 'param0', type: 'varchar', value: TypePrestation },
+    { name: 'param1', type: 'decimal', value: parseFloat(PrixHT) }, // Type correspondant à la structure decimal(18,2)
+    { name: 'param2', type: 'decimal', value: tauxTVA }, // Type correspondant à la structure decimal(6,4)
+    { name: 'param3', type: 'datetime', value: new Date(DateDebut) },
+    { name: 'param4', type: 'int', value: parseInt(id) }
+  ];
+
+  executeQuery(query, params, (err, results) => {
+    if (err) {
+      console.error('Erreur lors de la mise à jour du tarif:', err);
+      res.status(500).json({ error: 'Erreur serveur lors de la mise à jour du tarif' });
+      return;
+    }
+    
+    if (results && results.length > 0) {
+      res.json(results[0]);
+    } else {
+      res.status(404).json({ error: 'Tarif non trouvé' });
+    }
+  });
+});
+
+// Endpoint pour supprimer un tarif de la table Tarifs_Historique
+app.delete('/api/tarifs-historique/:id', (req, res) => {
+  const { id } = req.params;
+
+  // Validation de l'ID
+  if (!id || isNaN(parseInt(id))) {
+    return res.status(400).json({ error: 'ID invalide' });
+  }
+
+  const query = `
+    DELETE FROM Tarifs_Historique
+    OUTPUT DELETED.TarifID
+    WHERE TarifID = @param0
+  `;
+
+  const params = [
+    { name: 'param0', type: 'Int', value: parseInt(id) }
+  ];
+
+  executeQuery(query, params, (err, results) => {
+    if (err) {
+      console.error('Erreur lors de la suppression du tarif:', err);
+      res.status(500).json({ error: 'Erreur serveur lors de la suppression du tarif' });
+      return;
+    }
+    
+    if (results && results.length > 0) {
+      res.json({ success: true, message: 'Tarif supprimé avec succès', deletedId: results[0].TarifID });
+    } else {
+      res.status(404).json({ error: 'Tarif non trouvé' });
+    }
+  });
+});
+
+// Endpoint de test pour vérérifier que le serveur fonctionne
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Serveur backend fonctionnel', timestamp: new Date() });
+});
+
+// Démarrer le serveur
+app.listen(PORT, () => {
+  console.log(`Serveur backend démarré sur le port ${PORT}`);
+  console.log(`API disponible sur http://localhost:${PORT}/api`);
+});
+
+// Gestion des erreurs non capturées
+process.on('uncaughtException', (err) => {
+  console.error('Erreur non capturée:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Promesse non gérée:', reason);
+});

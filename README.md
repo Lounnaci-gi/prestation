@@ -1,70 +1,120 @@
-# Getting Started with Create React App
+# Système de Gestion Eau - Application Complète
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Application complète de gestion des ventes d'eau, vols et essais avec interface React et backend Node.js connecté à SQL Server.
 
-## Available Scripts
+## Structure du projet
 
-In the project directory, you can run:
+```
+d:/prestation/
+├── src/                    # Frontend React
+│   ├── api/               # Appels API backend
+│   ├── components/        # Composants React réutilisables
+│   ├── pages/             # Pages de l'application
+│   └── utils/             # Utilitaires
+├── server/                # Backend Node.js/Express
+│   ├── server.js          # Serveur principal
+│   ├── package.json       # Dépendances backend
+│   └── .env              # Configuration de la base de données
+└── bdd.sql               # Script de base de données
+```
 
-### `npm start`
+## Installation et configuration
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### 1. Backend (serveur API)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Naviguez dans le répertoire server et installez les dépendances :
 
-### `npm test`
+```bash
+cd server
+npm install
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Configurez la connexion à votre base de données SQL Server dans le fichier `.env` :
 
-### `npm run build`
+```env
+DB_SERVER=localhost
+DB_NAME=GestionEau
+DB_USERNAME=sa
+DB_PASSWORD=votre_mot_de_passe
+DB_ENCRYPT=true
+PORT=5000
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Démarrez le serveur backend :
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+npm start
+# ou pour le développement :
+npm run dev
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Le backend sera disponible sur `http://localhost:5000`
 
-### `npm run eject`
+### 2. Frontend (application React)
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Installez les dépendances (si ce n'est pas déjà fait) :
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+npm install
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Créez un fichier `.env` à la racine du projet pour configurer l'API backend :
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```env
+REACT_APP_API_URL=http://localhost:5000/api
+```
 
-## Learn More
+Démarrez l'application frontend :
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+npm start
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+L'application sera disponible sur `http://localhost:3000`
 
-### Code Splitting
+## Configuration de la base de données
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Assurez-vous que votre base de données SQL Server est correctement configurée avec le script fourni :
 
-### Analyzing the Bundle Size
+```sql
+-- Exécutez le script bdd.sql dans SQL Server Management Studio
+-- ou avec sqlcmd
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Fonctionnalités principales
 
-### Making a Progressive Web App
+- **Gestion des tarifs** : Ajouter, modifier, supprimer des tarifs dans la table `Tarifs_Historique`
+- **Gestion des clients** : Enregistrement et suivi des clients
+- **Gestion des ventes** : Suivi des dossiers de vente
+- **Gestion des devis** : Création et suivi des devis
+- **Gestion des factures** : Génération et suivi des factures
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Architecture technique
 
-### Advanced Configuration
+- **Frontend** : React 19.2.3, React Router, SweetAlert2
+- **Backend** : Node.js, Express, tedious (pour SQL Server)
+- **Base de données** : Microsoft SQL Server
+- **Communication** : API RESTful sur HTTP
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Points d'API principaux
 
-### Deployment
+- `GET /api/tarifs-historique` - Récupérer tous les tarifs
+- `POST /api/tarifs-historique` - Ajouter un nouveau tarif
+- `PUT /api/tarifs-historique/:id` - Mettre à jour un tarif
+- `DELETE /api/tarifs-historique/:id` - Supprimer un tarif
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## Dépannage
 
-### `npm run build` fails to minify
+Si vous rencontrez des problèmes de connexion à la base de données :
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+1. Vérifiez que SQL Server est en cours d'exécution
+2. Vérifiez les paramètres de connexion dans `.env`
+3. Assurez-vous que le nom de la base de données est correct
+4. Vérifiez que les tables ont été créées avec le script `bdd.sql`
+
+## Remarques importantes
+
+- L'application frontend ne peut pas se connecter directement à SQL Server pour des raisons de sécurité
+- Le backend API sert d'intermédiaire entre le frontend et la base de données
+- Toutes les opérations CRUD sont maintenant effectuées sur la base de données réelle
+- Les données sont maintenant persistées dans la table `Tarifs_Historique`

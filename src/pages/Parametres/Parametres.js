@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Card from '../../components/Card';
 import AlertService from '../../utils/alertService';
+import { getAllTarifs, updateTarif, deleteTarif } from '../../api/tarifsApi';
 import './Parametres.css';
 
 const Parametres = () => {
@@ -15,58 +16,33 @@ const Parametres = () => {
     dateDebut: new Date().toISOString().split('T')[0]
   });
 
+  // Remplacer automatiquement "VENTE" par "CITERNAGE" dans les options
+  const typePrestationOptions = [
+    { value: 'CITERNAGE', label: 'Citernage' },
+    { value: 'TRANSPORT', label: 'Transport' },
+    { value: 'VOL', label: 'Vol' },
+    { value: 'ESSAI', label: 'Essai' }
+  ];
+
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
 
-  // Simuler le chargement des données depuis la base de données
+  // Charger les données depuis la base de données
   useEffect(() => {
     const fetchTarifsFromDB = async () => {
       try {
-        // Simuler un délai de chargement
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const fetchedTarifs = await getAllTarifs();
         
-        // Données simulées basées sur la table Tarifs_Historique
-        // Pour simuler une base de données vide, nous pouvons commenter cette partie
-        // et laisser le tableau vide
+        // Convertir les données pour correspondre à la structure utilisée dans l'interface
+        const uiFormatTarifs = fetchedTarifs.map(tarif => ({
+          id: tarif.TarifID,
+          typePrestation: tarif.TypePrestation,
+          prixHT: tarif.PrixHT,
+          tauxTVA: tarif.TauxTVA,
+          dateDebut: tarif.DateDebut
+        }));
         
-        // Décommentez cette partie pour simuler des données existantes:
-        /*
-        const mockTarifs = [
-          {
-            id: 1,
-            typePrestation: 'VENTE',
-            prixHT: 25.50,
-            tauxTVA: 19,
-            dateDebut: '2026-01-01'
-          },
-          {
-            id: 2,
-            typePrestation: 'TRANSPORT',
-            prixHT: 500.00,
-            tauxTVA: 19,
-            dateDebut: '2026-01-01'
-          },
-          {
-            id: 3,
-            typePrestation: 'VOL',
-            prixHT: 0,
-            tauxTVA: 19,
-            dateDebut: '2026-01-01'
-          },
-          {
-            id: 4,
-            typePrestation: 'ESSAI',
-            prixHT: 0,
-            tauxTVA: 19,
-            dateDebut: '2026-01-01'
-          }
-        ];
-        */
-        
-        // Pour simuler une base de données vide (comme demandé)
-        const mockTarifs = [];
-        
-        setTarifs(mockTarifs);
+        setTarifs(uiFormatTarifs);
         setLoading(false);
       } catch (err) {
         setError('Erreur lors du chargement des tarifs');
@@ -77,23 +53,171 @@ const Parametres = () => {
     fetchTarifsFromDB();
   }, []);
 
-  const handleAddTarif = async () => {
-    if (newTarif.typePrestation && newTarif.prixHT) {
-      const tarifToAdd = {
-        id: Date.now(),
-        ...newTarif,
-        prixHT: parseFloat(newTarif.prixHT),
-        tauxTVA: parseFloat(newTarif.tauxTVA)
-      };
-      setTarifs([...tarifs, tarifToAdd]);
-      setNewTarif({
-        typePrestation: '',
+  // Fonction pour remplir automatiquement les champs quand un type est sélectionné
+  const handleTypePrestationChange = (selectedType) => {
+    setNewTarif(prev => ({
+      ...prev,
+      typePrestation: selectedType
+    }));
+
+    // Si un tarif avec ce type existe déjà, remplir les champs avec ses données
+    const existingTarif = tarifs.find(t => t.typePrestation === selectedType);
+    
+    if (existingTarif) {
+      // Formater la date au format YYYY-MM-DD
+      const formattedDate = existingTarif.dateDebut instanceof Date 
+        ? existingTarif.dateDebut.toISOString().split('T')[0]
+        : typeof existingTarif.dateDebut === 'string'
+          ? existingTarif.dateDebut.split('T')[0]
+          : new Date().toISOString().split('T')[0];
+
+      setNewTarif(prev => ({
+        ...prev,
+        prixHT: existingTarif.prixHT.toString(),
+        tauxTVA: existingTarif.tauxTVA.toString(),
+        dateDebut: formattedDate
+      }));
+    } else {
+      // Réinitialiser les champs si aucun tarif existant
+      setNewTarif(prev => ({
+        ...prev,
         prixHT: '',
         tauxTVA: '19',
         dateDebut: new Date().toISOString().split('T')[0]
-      });
-      
-      await AlertService.success('Tarif ajouté', 'Le nouveau tarif a été ajouté avec succès.');
+      }));
+    }
+  };
+
+  const handleAddTarif = async () => {
+    if (newTarif.typePrestation && newTarif.prixHT) {
+      try {
+        // Demander confirmation AVANT d'envoyer au backend
+        const confirmResult = await AlertService.confirm(
+          'Confirmation', 
+          'Voulez-vous enregistrer ce tarif dans la base de données ?', 
+          'Oui', 
+          'Non'
+        );
+        
+        if (!confirmResult.isConfirmed) {
+          return; // Annuler si l'utilisateur clique sur "Non"
+        }
+        
+        // Préparer les données conformément à la structure de la table Tarifs_Historique
+        const tarifToAdd = {
+          TypePrestation: newTarif.typePrestation.trim(),
+          PrixHT: parseFloat(newTarif.prixHT),
+          TauxTVA: parseFloat(newTarif.tauxTVA),
+          DateDebut: newTarif.dateDebut
+        };
+        
+        // Ajouter à la base de données
+        const response = await fetch('/api/tarifs-historique', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(tarifToAdd)
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          // Succès - tarif créé
+          // Convertir pour l'interface utilisateur
+          const uiFormatTarif = {
+            id: result.TarifID,
+            typePrestation: result.TypePrestation,
+            prixHT: result.PrixHT,
+            tauxTVA: result.TauxTVA,
+            dateDebut: result.DateDebut
+          };
+          
+          // Mettre à jour l'état local
+          setTarifs(prevTarifs => [...prevTarifs, uiFormatTarif]);
+          setNewTarif({
+            typePrestation: '',
+            prixHT: '',
+            tauxTVA: '19',
+            dateDebut: new Date().toISOString().split('T')[0]
+          });
+          
+          // Recharger les données depuis la base pour s'assurer de la synchronisation
+          const freshTarifs = await getAllTarifs();
+          const uiFormatFreshTarifs = freshTarifs.map(tarif => ({
+            id: tarif.TarifID,
+            typePrestation: tarif.TypePrestation,
+            prixHT: tarif.PrixHT,
+            tauxTVA: tarif.TauxTVA,
+            dateDebut: tarif.DateDebut
+          }));
+          setTarifs(uiFormatFreshTarifs);
+          
+          await AlertService.success('Tarif créé', 'Le tarif a été créé avec succès dans la table Tarifs_Historique.');
+        } else if (response.status === 409) {
+          // Conflit - tarif existe déjà
+          const existingTarif = result.existingTarif;
+          
+          // Proposer de modifier le tarif existant
+          const modifyResult = await AlertService.confirm(
+            'Tarif existant', 
+            `Un tarif pour "${newTarif.typePrestation}" existe déjà. Voulez-vous le modifier avec les nouvelles valeurs ?`, 
+            'Modifier', 
+            'Annuler'
+          );
+          
+          if (modifyResult.isConfirmed) {
+            // Modifier le tarif existant
+            const tarifToUpdate = {
+              TypePrestation: newTarif.typePrestation.trim(),
+              PrixHT: parseFloat(newTarif.prixHT),
+              TauxTVA: parseFloat(newTarif.tauxTVA),
+              DateDebut: newTarif.dateDebut
+            };
+            
+            const updateResponse = await fetch(`/api/tarifs-historique/${existingTarif.TarifID}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(tarifToUpdate)
+            });
+            
+            if (updateResponse.ok) {
+              await updateResponse.json();
+              
+              // Recharger les données depuis la base après modification
+              const freshTarifs = await getAllTarifs();
+              const uiFormatFreshTarifs = freshTarifs.map(tarif => ({
+                id: tarif.TarifID,
+                typePrestation: tarif.TypePrestation,
+                prixHT: tarif.PrixHT,
+                tauxTVA: tarif.TauxTVA,
+                dateDebut: tarif.DateDebut
+              }));
+              setTarifs(uiFormatFreshTarifs);
+              
+              setNewTarif({
+                typePrestation: '',
+                prixHT: '',
+                tauxTVA: '19',
+                dateDebut: new Date().toISOString().split('T')[0]
+              });
+              
+              await AlertService.success('Tarif modifié', 'Le tarif a été mis à jour avec succès dans la table Tarifs_Historique.');
+            } else {
+              const updateError = await updateResponse.json();
+              throw new Error(updateError.error || 'Erreur lors de la modification du tarif');
+            }
+          }
+        } else {
+          // Autre erreur
+          throw new Error(result.error || 'Erreur inconnue lors de l\'ajout du tarif');
+        }
+        
+      } catch (error) {
+        await AlertService.error('Erreur', `Impossible de traiter le tarif: ${error.message}`);
+      }
     } else {
       await AlertService.warning('Champs manquants', 'Veuillez remplir tous les champs requis.');
     }
@@ -108,23 +232,61 @@ const Parametres = () => {
   };
 
   const handleSaveEdit = async () => {
-    setTarifs(tarifs.map(t => 
-      t.id === editingId 
-        ? { ...t, ...editData, prixHT: parseFloat(editData.prixHT), tauxTVA: parseFloat(editData.tauxTVA) }
-        : t
-    ));
-    setEditingId(null);
-    setEditData({});
-    
-    await AlertService.success('Tarif modifié', 'Le tarif a été mis à jour avec succès.');
+    try {
+      // Préparer les données conformément à la structure de la table Tarifs_Historique
+      const tarifToUpdate = {
+        TypePrestation: tarifs.find(t => t.id === editingId)?.typePrestation,
+        PrixHT: parseFloat(editData.prixHT),
+        TauxTVA: parseFloat(editData.tauxTVA),
+        DateDebut: tarifs.find(t => t.id === editingId)?.dateDebut
+      };
+      
+      // Mettre à jour dans la base de données
+      await updateTarif(editingId, tarifToUpdate);
+      
+      // Recharger les données depuis la base après modification
+      const freshTarifs = await getAllTarifs();
+      const uiFormatFreshTarifs = freshTarifs.map(tarif => ({
+        id: tarif.TarifID,
+        typePrestation: tarif.TypePrestation,
+        prixHT: tarif.PrixHT,
+        tauxTVA: tarif.TauxTVA,
+        dateDebut: tarif.DateDebut
+      }));
+      setTarifs(uiFormatFreshTarifs);
+      
+      setEditingId(null);
+      setEditData({});
+      
+      await AlertService.success('Tarif modifié', 'Le tarif a été mis à jour avec succès dans la table Tarifs_Historique.');
+    } catch (error) {
+      await AlertService.error('Erreur', 'Impossible de modifier le tarif dans la base de données. Veuillez réessayer.');
+    }
   };
 
   const handleDelete = async (id) => {
-    const result = await AlertService.confirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer ce tarif ?', 'Supprimer', 'Annuler');
+    const result = await AlertService.confirm('Confirmation', 'Êtes-vous sûr de vouloir supprimer ce tarif de la table Tarifs_Historique ?', 'Supprimer', 'Annuler');
     
     if (result.isConfirmed) {
-      setTarifs(tarifs.filter(t => t.id !== id));
-      await AlertService.success('Tarif supprimé', 'Le tarif a été supprimé avec succès.');
+      try {
+        // Supprimer de la base de données
+        await deleteTarif(id);
+        
+        // Recharger les données depuis la base après suppression
+        const freshTarifs = await getAllTarifs();
+        const uiFormatFreshTarifs = freshTarifs.map(tarif => ({
+          id: tarif.TarifID,
+          typePrestation: tarif.TypePrestation,
+          prixHT: tarif.PrixHT,
+          tauxTVA: tarif.TauxTVA,
+          dateDebut: tarif.DateDebut
+        }));
+        setTarifs(uiFormatFreshTarifs);
+        
+        await AlertService.success('Tarif supprimé', 'Le tarif a été supprimé avec succès de la table Tarifs_Historique.');
+      } catch (error) {
+        await AlertService.error('Erreur', 'Impossible de supprimer le tarif de la base de données. Veuillez réessayer.');
+      }
     }
   };
 
@@ -169,13 +331,14 @@ const Parametres = () => {
                 <select 
                   className="setting-input"
                   value={newTarif.typePrestation}
-                  onChange={(e) => setNewTarif({...newTarif, typePrestation: e.target.value})}
+                  onChange={(e) => handleTypePrestationChange(e.target.value)}
                 >
                   <option value="">Sélectionner...</option>
-                  <option value="VENTE">Citernage</option>
-                  <option value="TRANSPORT">Transport</option>
-                  <option value="VOL">Vol</option>
-                  <option value="ESSAI">Essai</option>
+                  {typePrestationOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               
@@ -246,7 +409,12 @@ const Parametres = () => {
                       <td>{tarif.typePrestation}</td>
                       <td>{tarif.prixHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td>{tarif.tauxTVA}</td>
-                      <td>{tarif.dateDebut}</td>
+                      <td>
+                        {/* Formater la date pour l'affichage */}
+                        {typeof tarif.dateDebut === 'string' 
+                          ? tarif.dateDebut.split('T')[0] 
+                          : new Date(tarif.dateDebut).toISOString().split('T')[0]}
+                      </td>
                       <td className="actions-cell">
                         {editingId === tarif.id ? (
                           <>
@@ -281,10 +449,6 @@ const Parametres = () => {
           </div>
         </div>
       </Card>
-      
-      <div className="form-actions" style={{ marginTop: '1.5rem' }}>
-        <button className="btn btn-primary">Enregistrer les modifications</button>
-      </div>
     </div>
   );
 };
