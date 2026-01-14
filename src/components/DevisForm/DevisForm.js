@@ -3,6 +3,7 @@ import Input from '../../components/Input';
 import Select from '../../components/Select';
 import SearchableSelect from '../../components/SearchableSelect';
 import Button from '../../components/Button';
+import AlertService from '../../utils/alertService';
 import './DevisForm.css';
 
 const DevisForm = ({ onSubmit, onCancel }) => {
@@ -171,16 +172,41 @@ const DevisForm = ({ onSubmit, onCancel }) => {
     };
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (validateForm()) {
       const totals = calculateTotals();
-      onSubmit({ ...formData, ...totals });
+      
+      // Afficher une confirmation avant de soumettre
+      const result = await AlertService.confirm(
+        'Créer le devis', 
+        'Êtes-vous sûr de vouloir créer ce devis ?', 
+        'Créer', 
+        'Annuler'
+      );
+      
+      if (result.isConfirmed) {
+        onSubmit({ ...formData, ...totals });
+        await AlertService.success('Devis créé', 'Le devis a été créé avec succès.');
+      }
     }
   };
 
   const totals = calculateTotals();
+
+  const handleCancel = async () => {
+    const result = await AlertService.confirm(
+      'Annuler la création',
+      'Êtes-vous sûr de vouloir annuler la création du devis ?',
+      'Annuler',
+      'Continuer'
+    );
+    
+    if (result.isConfirmed) {
+      onCancel();
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="devis-form">
@@ -445,7 +471,7 @@ const DevisForm = ({ onSubmit, onCancel }) => {
       </div>
 
       <div className="form-actions">
-        <Button type="button" variant="ghost" onClick={onCancel}>
+        <Button type="button" variant="ghost" onClick={handleCancel}>
           Annuler
         </Button>
         <Button type="submit" variant="primary">
