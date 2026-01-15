@@ -47,6 +47,81 @@ const DevisForm = ({ onSubmit, onCancel }) => {
     fetchTarifs();
   }, []);
 
+  // Fonction pour obtenir le dernier tarif applicable pour un type de prestation
+  const getTarifByType = (typePrestation) => {
+    // Filtrer les tarifs actifs pour le type de prestation spécifié
+    const tarifsActifs = tarifs.filter(t => 
+      t.TypePrestation === typePrestation &&
+      (!t.DateFin || new Date(t.DateFin) > new Date())
+    );
+    
+    // Trier par date de début décroissante pour obtenir le plus récent
+    tarifsActifs.sort((a, b) => new Date(b.DateDebut) - new Date(a.DateDebut));
+    
+    // Retourner le premier (le plus récent) ou null si aucun trouvé
+    return tarifsActifs.length > 0 ? tarifsActifs[0] : null;
+  };
+
+  // Mettre à jour automatiquement le prix unitaire et la TVA quand le type de devis change
+  useEffect(() => {
+    if (formData.typeDossier) {
+      // Convertir le type de devis en type de prestation correspondant
+      let typePrestation = '';
+      switch (formData.typeDossier) {
+        case 'VENTE':
+          typePrestation = 'CITERNAGE'; // VENTE est converti en CITERNAGE dans le backend
+          break;
+        case 'PROCES_VOL':
+          typePrestation = 'VOL';
+          break;
+        case 'ESSAI_RESEAU':
+          typePrestation = 'ESSAI';
+          break;
+        default:
+          typePrestation = '';
+      }
+      
+      if (typePrestation) {
+        const tarif = getTarifByType(typePrestation);
+        if (tarif) {
+          // Mettre à jour le prix unitaire et la TVA si les champs sont vides
+          if (!formData.prixUnitaireM3_HT) {
+            setFormData(prev => ({
+              ...prev,
+              prixUnitaireM3_HT: tarif.PrixHT.toString()
+            }));
+          }
+          if (!formData.tauxTVA_Eau) {
+            setFormData(prev => ({
+              ...prev,
+              tauxTVA_Eau: (tarif.TauxTVA * 100).toString() // Convertir en pourcentage
+            }));
+          }
+        }
+      }
+      
+      // Pour le transport, charger les tarifs de transport si le type de devis est VENTE
+      if (formData.typeDossier === 'VENTE') {
+        const tarifTransport = getTarifByType('TRANSPORT');
+        if (tarifTransport) {
+          // Mettre à jour le prix de transport et la TVA de transport si les champs sont vides
+          if (!formData.prixTransportUnitaire_HT) {
+            setFormData(prev => ({
+              ...prev,
+              prixTransportUnitaire_HT: tarifTransport.PrixHT.toString()
+            }));
+          }
+          if (!formData.tauxTVA_Transport) {
+            setFormData(prev => ({
+              ...prev,
+              tauxTVA_Transport: (tarifTransport.TauxTVA * 100).toString() // Convertir en pourcentage
+            }));
+          }
+        }
+      }
+    }
+  }, [formData.typeDossier, tarifs]);
+
   // Mettre à jour automatiquement le prix de transport quand le volume change
   useEffect(() => {
     if (formData.volumeParCiterne && tarifs.length > 0) {
@@ -361,7 +436,7 @@ const DevisForm = ({ onSubmit, onCancel }) => {
               onChange={handleChange}
               required
               error={errors.nomRaisonSociale}
-              placeholder={isCreatingNewClient ? "Nom & prenom ou Raison Sociale" : ""}
+              placeholder={isCreatingNewClient ? "Nom & Prénom" : ""}
             />
 
             <Input
