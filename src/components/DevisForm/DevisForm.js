@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Input from '../../components/Input';
 import Select from '../../components/Select';
 import SearchableSelect from '../../components/SearchableSelect';
 import Button from '../../components/Button';
 import AlertService from '../../utils/alertService';
+import { getAllTarifs } from '../../api/tarifsApi';
 import './DevisForm.css';
 
 const DevisForm = ({ onSubmit, onCancel }) => {
@@ -30,6 +31,34 @@ const DevisForm = ({ onSubmit, onCancel }) => {
 
   const [errors, setErrors] = useState({});
   const [isCreatingNewClient, setIsCreatingNewClient] = useState(false);
+  const [tarifs, setTarifs] = useState([]);
+
+  // Charger les tarifs depuis l'API
+  useEffect(() => {
+    const fetchTarifs = async () => {
+      try {
+        const fetchedTarifs = await getAllTarifs();
+        setTarifs(fetchedTarifs);
+      } catch (error) {
+        console.error('Erreur lors du chargement des tarifs:', error);
+      }
+    };
+
+    fetchTarifs();
+  }, []);
+
+  // Mettre à jour automatiquement le prix de transport quand le volume change
+  useEffect(() => {
+    if (formData.volumeParCiterne && tarifs.length > 0) {
+      const nouveauPrixTransport = getPrixTransportSelonVolume(parseFloat(formData.volumeParCiterne) || 0);
+      if (nouveauPrixTransport !== parseFloat(formData.prixTransportUnitaire_HT)) {
+        setFormData(prev => ({
+          ...prev,
+          prixTransportUnitaire_HT: nouveauPrixTransport.toString()
+        }));
+      }
+    }
+  }, [formData.volumeParCiterne, tarifs]);
 
   // Mock data - In production, fetch from API
   const clients = [
@@ -134,13 +163,43 @@ const DevisForm = ({ onSubmit, onCancel }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Fonction pour obtenir le prix de transport en fonction du volume de la citerne
+  const getPrixTransportSelonVolume = (volume) => {
+    // Filtrer les tarifs de transport
+    const tarifsTransport = tarifs.filter(t => 
+      t.TypePrestation === 'TRANSPORT'
+    );
+    
+    // D'abord, chercher un tarif avec une référence de volume spécifique
+    let tarifSelectionne = null;
+    let volumeRefMax = -1;
+    
+    for (const tarif of tarifsTransport) {
+      // Si le tarif a une référence de volume et que le volume demandé est >= à la référence
+      if (tarif.VolumeReference !== null && volume >= tarif.VolumeReference && tarif.VolumeReference > volumeRefMax) {
+        volumeRefMax = tarif.VolumeReference;
+        tarifSelectionne = tarif;
+      }
+    }
+    
+    // Si aucun tarif spécifique trouvé, chercher un tarif sans référence de volume (valable pour tous les volumes)
+    if (!tarifSelectionne) {
+      tarifSelectionne = tarifsTransport.find(t => t.VolumeReference === null);
+    }
+    
+    // Si un tarif applicable est trouvé, retourner son prix, sinon retourner la valeur du formulaire ou 0
+    return tarifSelectionne ? tarifSelectionne.PrixHT : parseFloat(formData.prixTransportUnitaire_HT) || 0;
+  };
+
   const calculateTotals = () => {
     const nombreCiternes = parseFloat(formData.nombreCiternes) || 0;
     const volumeParCiterne = parseFloat(formData.volumeParCiterne) || 0;
     const prixUnitaireM3_HT = parseFloat(formData.prixUnitaireM3_HT) || 0;
     const tauxTVA_Eau = parseFloat(formData.tauxTVA_Eau) || 0;
-    const prixTransportUnitaire_HT = parseFloat(formData.prixTransportUnitaire_HT) || 0;
     const tauxTVA_Transport = parseFloat(formData.tauxTVA_Transport) || 0;
+    
+    // Calculer le prix du transport en fonction du volume de la citerne
+    const prixTransportUnitaire_HT = getPrixTransportSelonVolume(volumeParCiterne);
 
     // Calculate water cost
     const volumeTotal = nombreCiternes * volumeParCiterne;

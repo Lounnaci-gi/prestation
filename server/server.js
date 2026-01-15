@@ -13,19 +13,20 @@ app.use(express.json());
 // Configuration de la base de données depuis les variables d'environnement
 const config = {
   server: process.env.DB_SERVER || 'localhost',
+  options: {
+    port: parseInt(process.env.DB_PORT) || 1433,
+    database: process.env.DB_NAME || 'GestionEau',
+    encrypt: process.env.DB_ENCRYPT === 'true',
+    trustServerCertificate: true,
+    useUTC: true,
+    enableArithAbort: true
+  },
   authentication: {
     type: 'default',
     options: {
       userName: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD
     }
-  },
-  options: {
-    database: process.env.DB_NAME || 'GestionEau',
-    encrypt: process.env.DB_ENCRYPT === 'true',
-    trustServerCertificate: true,
-    useUTC: true,
-    enableArithAbort: true
   }
 };
 
@@ -152,8 +153,34 @@ app.post('/api/tarifs-historique', async (req, res) => {
     // FAIRE LA CONVERSION IMMÉDIATEMENT AU DÉBUT
     const typePrestationDB = TypePrestation.trim().toUpperCase() === 'VENTE' ? 'CITERNAGE' : TypePrestation.trim();
     
+    // Conversion et validation des valeurs numériques
+    const prixHT = parseFloat(parseFloat(PrixHT).toFixed(2));
+    let tauxTVAInput = parseFloat(TauxTVA);
+    let tauxTVA;
+    
+    if (tauxTVAInput > 10) {
+      tauxTVA = parseFloat((tauxTVAInput / 100).toFixed(4));
+    } else {
+      tauxTVA = parseFloat(tauxTVAInput.toFixed(4));
+    }
+    
+    const volumeRef = VolumeReference ? parseInt(VolumeReference) : null;
+    
+    // Validation
+    if (isNaN(prixHT) || prixHT <= 0 || prixHT > 999999999999999.99) {
+      return res.status(400).json({ 
+        error: 'Prix HT invalide. Doit être un nombre positif inférieur à 999,999,999,999,999.99' 
+      });
+    }
+    
+    if (isNaN(tauxTVA) || tauxTVA < 0 || tauxTVA > 99.9999) {
+      return res.status(400).json({ 
+        error: 'Taux TVA invalide. Doit être un nombre entre 0 et 99.9999' 
+      });
+    }
+
     // Méthode radicale : charger TOUS les tarifs et vérifier en JS
-    const getAllQuery = 'SELECT TarifID, TypePrestation, PrixHT, TauxTVA, DateDebut, DateFin FROM Tarifs_Historique';
+    const getAllQuery = 'SELECT TarifID, TypePrestation, PrixHT, TauxTVA, DateDebut, DateFin, VolumeReference FROM Tarifs_Historique';
     const allTarifs = await new Promise((resolve, reject) => {
       executeQuery(getAllQuery, [], (err, results) => {
         if (err) reject(err);
@@ -169,7 +196,23 @@ app.post('/api/tarifs-historique', async (req, res) => {
       const cleanDbType = (tarif.TypePrestation || '').trim().toUpperCase();
       const isActive = !tarif.DateFin || new Date(tarif.DateFin) > new Date();
       
-      const isMatch = cleanDbType === cleanInputType && isActive;
+      // Pour le TRANSPORT, on vérifie le couple TypePrestation + VolumeReference
+      // Pour les autres types, on vérifie juste le TypePrestation
+      let isMatch = false;
+      
+      if (cleanInputType === 'TRANSPORT') {
+        // Pour le transport, le volume de référence doit être pris en compte
+        const inputVolume = volumeRef;
+        const dbVolume = tarif.VolumeReference;
+        
+        isMatch = cleanDbType === cleanInputType && 
+                 isActive && 
+                 ((inputVolume !== null && dbVolume !== null && inputVolume === dbVolume) || 
+                  (inputVolume === null && dbVolume === null));
+      } else {
+        // Pour les autres types de prestation, on vérifie juste le type
+        isMatch = cleanDbType === cleanInputType && isActive;
+      }
       
       return isMatch;
     });
@@ -181,19 +224,6 @@ app.post('/api/tarifs-historique', async (req, res) => {
         code: 'DUPLICATE_TARIFF'
       });
     }
-
-    // Conversion et validation des valeurs numériques
-    const prixHT = parseFloat(parseFloat(PrixHT).toFixed(2));
-    let tauxTVAInput = parseFloat(TauxTVA);
-    let tauxTVA;
-    
-    if (tauxTVAInput > 10) {
-      tauxTVA = parseFloat((tauxTVAInput / 100).toFixed(4));
-    } else {
-      tauxTVA = parseFloat(tauxTVAInput.toFixed(4));
-    }
-    
-    const volumeRef = VolumeReference ? parseInt(VolumeReference) : null;
 
     // Validation
     if (isNaN(prixHT) || prixHT <= 0 || prixHT > 999999999999999.99) {
@@ -262,9 +292,9 @@ app.post('/api/tarifs-historique', async (req, res) => {
 });
 
 // Endpoint pour mettre à jour un tarif dans la table Tarifs_Historique
-app.put('/api/tarifs-historique/:id', (req, res) => {
+app.put('/api/tarifs-historique/:id', async (req, res) => {
   const { id } = req.params;
-  const { TypePrestation, PrixHT, TauxTVA, DateDebut } = req.body;
+  const { TypePrestation, PrixHT, TauxTVA, DateDebut, VolumeReference } = req.body;
 
   // Validation de l'ID
   if (!id || isNaN(parseInt(id))) {
@@ -282,35 +312,124 @@ app.put('/api/tarifs-historique/:id', (req, res) => {
     // Sinon on le laisse tel quel (ex: 0.19)
     tauxTVA = parseFloat(tauxTVAInput.toFixed(4));
   }
+  
+  // Conversion et validation des valeurs numériques
+  const prixHT = parseFloat(parseFloat(PrixHT).toFixed(2));
+  const volumeRef = VolumeReference !== undefined ? parseInt(VolumeReference) : null;
+  
+  // Validation
+  if (isNaN(prixHT) || prixHT <= 0 || prixHT > 999999999999999.99) {
+    return res.status(400).json({ 
+      error: 'Prix HT invalide. Doit être un nombre positif inférieur à 999,999,999,999,999.99' 
+    });
+  }
 
-  const query = `
-    UPDATE Tarifs_Historique
-    SET TypePrestation = @param0, PrixHT = @param1, TauxTVA = @param2, DateDebut = @param3
-    OUTPUT INSERTED.*
-    WHERE TarifID = @param4
-  `;
+  try {
+    // Charger TOUS les tarifs pour vérifier les doublons
+    const getAllQuery = 'SELECT TarifID, TypePrestation, PrixHT, TauxTVA, DateDebut, DateFin, VolumeReference FROM Tarifs_Historique';
+    const allTarifs = await new Promise((resolve, reject) => {
+      executeQuery(getAllQuery, [], (err, results) => {
+        if (err) reject(err);
+        else resolve(results || []);
+      });
+    });
 
-  const params = [
-    { name: 'param0', type: 'varchar', value: TypePrestation },
-    { name: 'param1', type: 'decimal', value: parseFloat(PrixHT) }, // Type correspondant à la structure decimal(18,2)
-    { name: 'param2', type: 'decimal', value: tauxTVA }, // Type correspondant à la structure decimal(6,4)
-    { name: 'param3', type: 'datetime', value: new Date(DateDebut) },
-    { name: 'param4', type: 'int', value: parseInt(id) }
-  ];
+    // Nettoyer le type de prestation pour la comparaison
+    const cleanInputType = (TypePrestation || '').trim().toUpperCase();
+    
+    // Vérifier les doublons - PLUS STRICT
+    const existingTarif = allTarifs.find(tarif => {
+      const cleanDbType = (tarif.TypePrestation || '').trim().toUpperCase();
+      const isActive = !tarif.DateFin || new Date(tarif.DateFin) > new Date();
+      
+      // Ne pas considérer le tarif en cours de mise à jour
+      if (tarif.TarifID == id) {
+        return false;
+      }
+      
+      // Pour le TRANSPORT, on vérifie le couple TypePrestation + VolumeReference
+      // Pour les autres types, on vérifie juste le TypePrestation
+      let isMatch = false;
+      
+      if (cleanInputType === 'TRANSPORT') {
+        // Pour le transport, le volume de référence doit être pris en compte
+        const inputVolume = volumeRef;
+        const dbVolume = tarif.VolumeReference;
+        
+        isMatch = cleanDbType === cleanInputType && 
+                 isActive && 
+                 ((inputVolume !== null && dbVolume !== null && inputVolume === dbVolume) || 
+                  (inputVolume === null && dbVolume === null));
+      } else {
+        // Pour les autres types de prestation, on vérifie juste le type
+        isMatch = cleanDbType === cleanInputType && isActive;
+      }
+      
+      return isMatch;
+    });
 
-  executeQuery(query, params, (err, results) => {
-    if (err) {
-      console.error('Erreur lors de la mise à jour du tarif:', err);
-      res.status(500).json({ error: 'Erreur serveur lors de la mise à jour du tarif' });
-      return;
+    if (existingTarif) {
+      return res.status(409).json({ 
+        error: `Un tarif pour "${TypePrestation}" existe déjà (ID: ${existingTarif.TarifID})`,
+        existingTarif: existingTarif,
+        code: 'DUPLICATE_TARIFF'
+      });
     }
     
-    if (results && results.length > 0) {
-      res.json(results[0]);
+    let query, params;
+    if (volumeRef !== null) {
+      query = `
+        UPDATE Tarifs_Historique
+        SET TypePrestation = @param0, PrixHT = @param1, TauxTVA = @param2, DateDebut = @param3, VolumeReference = @param4
+        OUTPUT INSERTED.*
+        WHERE TarifID = @param5
+      `;
+      
+      params = [
+        { name: 'param0', type: 'varchar', value: TypePrestation },
+        { name: 'param1', type: 'decimal', value: prixHT }, // Type correspondant à la structure decimal(18,2)
+        { name: 'param2', type: 'decimal', value: tauxTVA }, // Type correspondant à la structure decimal(6,4)
+        { name: 'param3', type: 'datetime', value: new Date(DateDebut) },
+        { name: 'param4', type: 'int', value: volumeRef },
+        { name: 'param5', type: 'int', value: parseInt(id) }
+      ];
     } else {
-      res.status(404).json({ error: 'Tarif non trouvé' });
+      query = `
+        UPDATE Tarifs_Historique
+        SET TypePrestation = @param0, PrixHT = @param1, TauxTVA = @param2, DateDebut = @param3, VolumeReference = NULL
+        OUTPUT INSERTED.*
+        WHERE TarifID = @param4
+      `;
+      
+      params = [
+        { name: 'param0', type: 'varchar', value: TypePrestation },
+        { name: 'param1', type: 'decimal', value: prixHT }, // Type correspondant à la structure decimal(18,2)
+        { name: 'param2', type: 'decimal', value: tauxTVA }, // Type correspondant à la structure decimal(6,4)
+        { name: 'param3', type: 'datetime', value: new Date(DateDebut) },
+        { name: 'param4', type: 'int', value: parseInt(id) }
+      ];
     }
-  });
+
+    executeQuery(query, params, (err, results) => {
+      if (err) {
+        console.error('Erreur lors de la mise à jour du tarif:', err);
+        res.status(500).json({ error: 'Erreur serveur lors de la mise à jour du tarif' });
+        return;
+      }
+      
+      if (results && results.length > 0) {
+        res.json(results[0]);
+      } else {
+        res.status(404).json({ error: 'Tarif non trouvé' });
+      }
+    });
+  } catch (error) {
+    console.error('ERREUR FATALE:', error);
+    res.status(500).json({ 
+      error: 'Erreur lors de la mise à jour du tarif',
+      details: error.message
+    });
+  }
 });
 
 // Endpoint pour supprimer un tarif de la table Tarifs_Historique

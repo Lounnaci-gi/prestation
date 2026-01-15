@@ -13,6 +13,7 @@ const Parametres = () => {
     typePrestation: '',
     prixHT: '',
     tauxTVA: '19',
+    volumeReference: '',
     dateDebut: new Date().toISOString().split('T')[0]
   });
 
@@ -39,6 +40,7 @@ const Parametres = () => {
           typePrestation: tarif.TypePrestation,
           prixHT: tarif.PrixHT,
           tauxTVA: tarif.TauxTVA,
+          volumeReference: tarif.VolumeReference,
           dateDebut: tarif.DateDebut
         }));
         
@@ -74,7 +76,8 @@ const Parametres = () => {
       setNewTarif(prev => ({
         ...prev,
         prixHT: existingTarif.prixHT.toString(),
-        tauxTVA: existingTarif.tauxTVA.toString(),
+        tauxTVA: (existingTarif.tauxTVA * 100).toString(),
+        volumeReference: existingTarif.volumeReference ? existingTarif.volumeReference.toString() : '',
         dateDebut: formattedDate
       }));
     } else {
@@ -83,6 +86,7 @@ const Parametres = () => {
         ...prev,
         prixHT: '',
         tauxTVA: '19',
+        volumeReference: '',
         dateDebut: new Date().toISOString().split('T')[0]
       }));
     }
@@ -107,7 +111,8 @@ const Parametres = () => {
         const tarifToAdd = {
           TypePrestation: newTarif.typePrestation.trim(),
           PrixHT: parseFloat(newTarif.prixHT),
-          TauxTVA: parseFloat(newTarif.tauxTVA),
+          TauxTVA: parseFloat(newTarif.tauxTVA) > 1 ? parseFloat(newTarif.tauxTVA) / 100 : parseFloat(newTarif.tauxTVA),
+          VolumeReference: newTarif.volumeReference ? parseInt(newTarif.volumeReference) : null,
           DateDebut: newTarif.dateDebut
         };
         
@@ -130,6 +135,7 @@ const Parametres = () => {
             typePrestation: result.TypePrestation,
             prixHT: result.PrixHT,
             tauxTVA: result.TauxTVA,
+            volumeReference: result.VolumeReference,
             dateDebut: result.DateDebut
           };
           
@@ -139,6 +145,7 @@ const Parametres = () => {
             typePrestation: '',
             prixHT: '',
             tauxTVA: '19',
+            volumeReference: '',
             dateDebut: new Date().toISOString().split('T')[0]
           });
           
@@ -171,7 +178,8 @@ const Parametres = () => {
             const tarifToUpdate = {
               TypePrestation: newTarif.typePrestation.trim(),
               PrixHT: parseFloat(newTarif.prixHT),
-              TauxTVA: parseFloat(newTarif.tauxTVA),
+              TauxTVA: parseFloat(newTarif.tauxTVA) > 1 ? parseFloat(newTarif.tauxTVA) / 100 : parseFloat(newTarif.tauxTVA),
+              VolumeReference: newTarif.volumeReference ? parseInt(newTarif.volumeReference) : null,
               DateDebut: newTarif.dateDebut
             };
             
@@ -201,6 +209,7 @@ const Parametres = () => {
                 typePrestation: '',
                 prixHT: '',
                 tauxTVA: '19',
+                volumeReference: '',
                 dateDebut: new Date().toISOString().split('T')[0]
               });
               
@@ -227,7 +236,8 @@ const Parametres = () => {
     setEditingId(tarif.id);
     setEditData({
       prixHT: tarif.prixHT,
-      tauxTVA: tarif.tauxTVA
+      tauxTVA: tarif.tauxTVA * 100,
+      volumeReference: tarif.volumeReference
     });
   };
 
@@ -237,7 +247,8 @@ const Parametres = () => {
       const tarifToUpdate = {
         TypePrestation: tarifs.find(t => t.id === editingId)?.typePrestation,
         PrixHT: parseFloat(editData.prixHT),
-        TauxTVA: parseFloat(editData.tauxTVA),
+        TauxTVA: parseFloat(editData.tauxTVA) > 1 ? parseFloat(editData.tauxTVA) / 100 : parseFloat(editData.tauxTVA),
+        VolumeReference: editData.volumeReference ? parseInt(editData.volumeReference) : null,
         DateDebut: tarifs.find(t => t.id === editingId)?.dateDebut
       };
       
@@ -279,6 +290,7 @@ const Parametres = () => {
           typePrestation: tarif.TypePrestation,
           prixHT: tarif.PrixHT,
           tauxTVA: tarif.TauxTVA,
+          volumeReference: tarif.VolumeReference,
           dateDebut: tarif.DateDebut
         }));
         setTarifs(uiFormatFreshTarifs);
@@ -341,7 +353,7 @@ const Parametres = () => {
                   ))}
                 </select>
               </div>
-              
+                            
               <div className="setting-item">
                 <label className="setting-label">Prix HT (DZD)</label>
                 <input 
@@ -353,7 +365,7 @@ const Parametres = () => {
                   step="0.01"
                 />
               </div>
-              
+                            
               <div className="setting-item">
                 <label className="setting-label">Taux TVA (%)</label>
                 <input 
@@ -365,7 +377,20 @@ const Parametres = () => {
                   step="0.01"
                 />
               </div>
-              
+                            
+              <div className="setting-item">
+                <label className="setting-label">Volume de Référence (m³)</label>
+                <input 
+                  type="number" 
+                  className="setting-input" 
+                  value={newTarif.volumeReference}
+                  onChange={(e) => setNewTarif({...newTarif, volumeReference: e.target.value})}
+                  placeholder="Volume de référence (s'applique uniquement au transport)"
+                  step="1"
+                  disabled={newTarif.typePrestation !== 'TRANSPORT'}
+                />
+              </div>
+                            
               <div className="setting-item">
                 <label className="setting-label">Date de début</label>
                 <input 
@@ -375,7 +400,7 @@ const Parametres = () => {
                   onChange={(e) => setNewTarif({...newTarif, dateDebut: e.target.value})}
                 />
               </div>
-              
+                            
               <div className="setting-item" style={{ alignSelf: 'flex-end' }}>
                 <button 
                   className="btn btn-primary" 
@@ -399,6 +424,7 @@ const Parametres = () => {
                     <th>Type de prestation</th>
                     <th>Prix HT (DZD)</th>
                     <th>Taux TVA (%)</th>
+                    <th>Volume Réf. (m³)</th>
                     <th>Date de début</th>
                     <th>Actions</th>
                   </tr>
@@ -406,9 +432,10 @@ const Parametres = () => {
                 <tbody>
                   {tarifs.map((tarif) => (
                     <tr key={tarif.id}>
-                      <td>{tarif.typePrestation}</td>
+                      <td>{tarif.typePrestation}{tarif.volumeReference && tarif.typePrestation === 'TRANSPORT' ? ' (variable)' : ''}</td>
                       <td>{tarif.prixHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      <td>{tarif.tauxTVA}</td>
+                      <td>{typeof tarif.tauxTVA === 'number' && tarif.tauxTVA < 1 ? (tarif.tauxTVA * 100).toFixed(2) : tarif.tauxTVA}%</td>
+                      <td>{tarif.volumeReference || '-'}</td>
                       <td>
                         {/* Formater la date pour l'affichage */}
                         {typeof tarif.dateDebut === 'string' 
@@ -428,9 +455,17 @@ const Parametres = () => {
                             <input
                               type="number"
                               className="setting-input small-input"
-                              value={editData.tauxTVA}
+                              value={typeof editData.tauxTVA === 'number' && editData.tauxTVA < 1 ? (editData.tauxTVA * 100).toFixed(2) : editData.tauxTVA}
                               onChange={(e) => setEditData({...editData, tauxTVA: e.target.value})}
                               step="0.01"
+                            />
+                            <input
+                              type="number"
+                              className="setting-input small-input"
+                              value={editData.volumeReference || ''}
+                              onChange={(e) => setEditData({...editData, volumeReference: e.target.value})}
+                              step="1"
+                              disabled={tarifs.find(t => t.id === editingId)?.typePrestation !== 'TRANSPORT'}
                             />
                             <button className="btn btn-primary" onClick={handleSaveEdit}>Sauver</button>
                           </>
