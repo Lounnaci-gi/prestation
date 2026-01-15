@@ -5,6 +5,7 @@ import SearchableSelect from '../../components/SearchableSelect';
 import Button from '../../components/Button';
 import AlertService from '../../utils/alertService';
 import { getAllTarifs } from '../../api/tarifsApi';
+import { amountToWords } from '../../utils/numberToWords';
 import './DevisForm.css';
 
 const DevisForm = ({ onSubmit, onCancel }) => {
@@ -22,6 +23,7 @@ const DevisForm = ({ onSubmit, onCancel }) => {
     volumeParCiterne: '',
     prixUnitaireM3_HT: '',
     tauxTVA_Eau: '19',
+    inclureTransport: false,
     prixTransportUnitaire_HT: '0',
     tauxTVA_Transport: '19',
     dateDevis: new Date().toISOString().split('T')[0],
@@ -245,25 +247,47 @@ const DevisForm = ({ onSubmit, onCancel }) => {
       t.TypePrestation === 'TRANSPORT'
     );
     
-    // D'abord, chercher un tarif avec une référence de volume spécifique
-    let tarifSelectionne = null;
-    let volumeRefMax = -1;
+    // Trier les tarifs de transport par volume de référence croissant
+    const tarifsTriés = [...tarifsTransport].sort((a, b) => {
+      if (a.VolumeReference === null) return 1;
+      if (b.VolumeReference === null) return -1;
+      return a.VolumeReference - b.VolumeReference;
+    });
     
-    for (const tarif of tarifsTransport) {
-      // Si le tarif a une référence de volume et que le volume demandé est >= à la référence
-      if (tarif.VolumeReference !== null && volume >= tarif.VolumeReference && tarif.VolumeReference > volumeRefMax) {
-        volumeRefMax = tarif.VolumeReference;
-        tarifSelectionne = tarif;
+    // Chercher le tarif applicable selon l'intervalle de volumes
+    for (let i = 0; i < tarifsTriés.length; i++) {
+      const tarif = tarifsTriés[i];
+      
+      if (tarif.VolumeReference !== null) {
+        // Déterminer les bornes de l'intervalle
+        const borneInf = i === 0 ? 1 : (tarifsTriés[i-1].VolumeReference + 1);
+        const borneSup = tarif.VolumeReference;
+        
+        // Vérifier si le volume se trouve dans l'intervalle
+        if (volume >= borneInf && volume <= borneSup) {
+          return tarif.PrixHT;
+        }
       }
     }
     
-    // Si aucun tarif spécifique trouvé, chercher un tarif sans référence de volume (valable pour tous les volumes)
-    if (!tarifSelectionne) {
-      tarifSelectionne = tarifsTransport.find(t => t.VolumeReference === null);
+    // Si le volume est supérieur au volume de référence le plus élevé,
+    // utiliser le tarif du volume de référence le plus élevé
+    const tarifsAvecVolumeRef = tarifsTriés.filter(t => t.VolumeReference !== null);
+    if (tarifsAvecVolumeRef.length > 0) {
+      const tarifMax = tarifsAvecVolumeRef[tarifsAvecVolumeRef.length - 1];
+      if (volume > tarifMax.VolumeReference) {
+        return tarifMax.PrixHT;
+      }
     }
     
-    // Si un tarif applicable est trouvé, retourner son prix, sinon retourner la valeur du formulaire ou 0
-    return tarifSelectionne ? tarifSelectionne.PrixHT : parseFloat(formData.prixTransportUnitaire_HT) || 0;
+    // Si aucun tarif spécifique trouvé pour les intervalles, utiliser un tarif sans référence de volume
+    const tarifGeneral = tarifsTransport.find(t => t.VolumeReference === null);
+    if (tarifGeneral) {
+      return tarifGeneral.PrixHT;
+    }
+    
+    // Si aucun tarif applicable trouvé, retourner la valeur du formulaire ou 0
+    return parseFloat(formData.prixTransportUnitaire_HT) || 0;
   };
 
   const calculateTotals = () => {
@@ -282,10 +306,10 @@ const DevisForm = ({ onSubmit, onCancel }) => {
     const totalEauTVA = totalEauHT * (tauxTVA_Eau / 100);
     const totalEauTTC = totalEauHT + totalEauTVA;
 
-    // Calculate transport cost
-    const totalTransportHT = nombreCiternes * prixTransportUnitaire_HT;
-    const totalTransportTVA = totalTransportHT * (tauxTVA_Transport / 100);
-    const totalTransportTTC = totalTransportHT + totalTransportTVA;
+    // Calculate transport cost (only if transport is included)
+    const totalTransportHT = formData.inclureTransport ? nombreCiternes * prixTransportUnitaire_HT : 0;
+    const totalTransportTVA = formData.inclureTransport ? totalTransportHT * (tauxTVA_Transport / 100) : 0;
+    const totalTransportTTC = formData.inclureTransport ? totalTransportHT + totalTransportTVA : 0;
 
     // Total
     const totalHT = totalEauHT + totalTransportHT;
@@ -527,26 +551,56 @@ const DevisForm = ({ onSubmit, onCancel }) => {
             required
           />
 
-          <Input
-            label="Prix Transport Unitaire HT (DZD)"
-            type="number"
-            name="prixTransportUnitaire_HT"
-            value={formData.prixTransportUnitaire_HT}
-            onChange={handleChange}
-            min="0"
-            step="0.01"
-          />
+          <div className="checkbox-field">
+            <label>
+              <input
+                type="checkbox"
+                name="inclureTransport"
+                checked={formData.inclureTransport}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setFormData(prev => ({
+                    ...prev,
+                    inclureTransport: checked
+                  }));
+                  
+                  // Clear transport errors when toggling
+                  if (errors.prixTransportUnitaire_HT) {
+                    setErrors(prev => ({
+                      ...prev,
+                      prixTransportUnitaire_HT: ''
+                    }));
+                  }
+                }}
+              />
+              <span>Inclure le transport</span>
+            </label>
+          </div>
 
-          <Input
-            label="Taux TVA Transport (%)"
-            type="number"
-            name="tauxTVA_Transport"
-            value={formData.tauxTVA_Transport}
-            onChange={handleChange}
-            min="0"
-            max="100"
-            step="0.01"
-          />
+          {formData.inclureTransport && (
+            <>
+              <Input
+                label="Prix Transport Unitaire HT (DZD)"
+                type="number"
+                name="prixTransportUnitaire_HT"
+                value={formData.prixTransportUnitaire_HT}
+                onChange={handleChange}
+                min="0"
+                step="0.01"
+              />
+
+              <Input
+                label="Taux TVA Transport (%)"
+                type="number"
+                name="tauxTVA_Transport"
+                value={formData.tauxTVA_Transport}
+                onChange={handleChange}
+                min="0"
+                max="100"
+                step="0.01"
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -586,6 +640,10 @@ const DevisForm = ({ onSubmit, onCancel }) => {
           <div className="total-item grand-total">
             <span className="total-label">TOTAL GÉNÉRAL TTC:</span>
             <span className="total-value">{totals.totalTTC.toFixed(2)} DZD</span>
+          </div>
+          <div className="total-item grand-total-words">
+            <span className="total-label">Ce devis est arrêté à la somme de :</span>
+            <span className="total-words">{amountToWords(totals.totalTTC)}</span>
           </div>
         </div>
       </div>

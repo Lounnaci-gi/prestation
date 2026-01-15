@@ -2,17 +2,17 @@
   width: 100%;
 }
 
-.status-accepte {
+.status-badge.status-accepte {
   background-color: #d1fae5;
   color: #059669;
 }
 
-.status-en-attente {
+.status-badge.status-en-attente {
   background-color: #fef3c7;
   color: #d97706;
 }
 
-.status-refuse {
+.status-badge.status-refuse {
   background-color: #fee2e2;
   color: #dc2626;
 }
