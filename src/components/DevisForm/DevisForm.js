@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Input from '../../components/Input';
 import Select from '../../components/Select';
 import SearchableSelect from '../../components/SearchableSelect';
@@ -58,6 +58,8 @@ const DevisForm = ({ onSubmit, onCancel }) => {
   const [errors, setErrors] = useState({});
   const [isCreatingNewClient, setIsCreatingNewClient] = useState(false);
   const [tarifs, setTarifs] = useState([]);
+  const [isCanceling, setIsCanceling] = useState(false);
+  const lastCancelTime = useRef(0);
 
   // Charger les tarifs depuis l'API
   useEffect(() => {
@@ -378,16 +380,37 @@ const DevisForm = ({ onSubmit, onCancel }) => {
 
   const totals = calculateTotals();
 
-  const handleCancel = async () => {
-    const result = await AlertService.confirm(
-      'Annuler la création',
-      'Êtes-vous sûr de vouloir annuler la création du devis ?',
-      'Annuler',
-      'Continuer'
-    );
+  const handleCancel = async (e) => {
+    // Stopper la propagation de l'événement pour éviter les doubles clics
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
     
-    if (result.isConfirmed) {
-      onCancel();
+    // Empêcher les clics trop rapprochés (moins de 300ms)
+    const now = Date.now();
+    if (now - lastCancelTime.current < 300) return;
+    lastCancelTime.current = now;
+    
+    // Empêcher les appels multiples
+    if (isCanceling) return;
+    
+    setIsCanceling(true);
+    
+    try {
+      const result = await AlertService.confirm(
+        'Annuler la création',
+        'Êtes-vous sûr de vouloir annuler la création du devis ?',
+        'Annuler',
+        'Continuer'
+      );
+      
+      if (result.isConfirmed) {
+        onCancel();
+      }
+      // Si l'utilisateur clique sur "Annuler" dans SweetAlert, ne rien faire de plus
+    } finally {
+      setIsCanceling(false);
     }
   };
 
@@ -396,7 +419,7 @@ const DevisForm = ({ onSubmit, onCancel }) => {
       <div className="form-header">
         <h2 className="form-title">Nouveau devis</h2>
         <div className="header-actions">
-          <button className="btn btn-cancel" onClick={handleCancel}>Annuler</button>
+          <button className="btn btn-cancel" onClick={(e) => handleCancel(e)}>Annuler</button>
           <button className="btn btn-save" type="submit">Enregistrer</button>
           <button className="btn btn-finalize">Finaliser et envoyer</button>
         </div>
@@ -454,77 +477,77 @@ const DevisForm = ({ onSubmit, onCancel }) => {
             </>
           )}
         </div>
+
+        {formData.clientId && (
+          <>
+            <div className="section-header">
+              <h3 className="section-title">
+                {isCreatingNewClient ? 'Nouveau Client' : 'Informations du Client'}
+              </h3>
+              {isCreatingNewClient && (
+                <span className="new-client-badge">🆕 Nouveau</span>
+              )}
+            </div>
+            <div className="form-grid">
+              <Input
+                label="Code Client"
+                type="text"
+                name="codeClient"
+                value={formData.codeClient}
+                onChange={handleChange}
+                disabled={!isCreatingNewClient}
+                required={isCreatingNewClient}
+                error={errors.codeClient}
+                placeholder={isCreatingNewClient ? "6 caractères (ex: CLI001)" : ""}
+                maxLength="6"
+                style={{ textTransform: 'uppercase' }}
+              />
+
+              <Input
+                label="Nom / Raison Sociale"
+                type="text"
+                name="nomRaisonSociale"
+                value={formData.nomRaisonSociale}
+                onChange={handleChange}
+                required
+                error={errors.nomRaisonSociale}
+                placeholder={isCreatingNewClient ? "Nom & Prénom" : ""}
+              />
+
+              <Input
+                label="Téléphone"
+                type="tel"
+                name="telephone"
+                value={formData.telephone}
+                onChange={handleChange}
+                placeholder="0555123456"
+              />
+
+              <Input
+                label="Email"
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="contact@example.dz"
+              />
+            </div>
+
+            <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
+              <Input
+                label="Adresse"
+                type="text"
+                name="adresse"
+                value={formData.adresse}
+                onChange={handleChange}
+                required
+                error={errors.adresse}
+                placeholder="Adresse complète du client"
+              />
+            </div>
+          </>
+        )}
       </div>
-
-      {formData.clientId && (
-        <div className="form-section">
-          <div className="section-header">
-            <h3 className="section-title">
-              {isCreatingNewClient ? 'Nouveau Client' : 'Informations du Client'}
-            </h3>
-            {isCreatingNewClient && (
-              <span className="new-client-badge">🆕 Nouveau</span>
-            )}
-          </div>
-          <div className="form-grid">
-            <Input
-              label="Code Client"
-              type="text"
-              name="codeClient"
-              value={formData.codeClient}
-              onChange={handleChange}
-              disabled={!isCreatingNewClient}
-              required={isCreatingNewClient}
-              error={errors.codeClient}
-              placeholder={isCreatingNewClient ? "6 caractères (ex: CLI001)" : ""}
-              maxLength="6"
-              style={{ textTransform: 'uppercase' }}
-            />
-
-            <Input
-              label="Nom / Raison Sociale"
-              type="text"
-              name="nomRaisonSociale"
-              value={formData.nomRaisonSociale}
-              onChange={handleChange}
-              required
-              error={errors.nomRaisonSociale}
-              placeholder={isCreatingNewClient ? "Nom & Prénom" : ""}
-            />
-
-            <Input
-              label="Téléphone"
-              type="tel"
-              name="telephone"
-              value={formData.telephone}
-              onChange={handleChange}
-              placeholder="0555123456"
-            />
-
-            <Input
-              label="Email"
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="contact@example.dz"
-            />
-          </div>
-
-          <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
-            <Input
-              label="Adresse"
-              type="text"
-              name="adresse"
-              value={formData.adresse}
-              onChange={handleChange}
-              required
-              error={errors.adresse}
-              placeholder="Adresse complète du client"
-            />
-          </div>
-        </div>
-      )}
 
 
       {formData.typeDossier && (
@@ -533,33 +556,44 @@ const DevisForm = ({ onSubmit, onCancel }) => {
             <h3 className="section-title">Détails de la Prestation</h3>
           </div>
           <div className="form-grid">
-
-
-            <Input
-              label="Prix Unitaire Eau HT (DZD/m³)"
-              type="number"
-              name="prixUnitaireM3_HT"
-              value={formData.prixUnitaireM3_HT}
-              onChange={handleChange}
-              min="0"
-              step="0.01"
-              required
-              error={errors.prixUnitaireM3_HT}
-              disabled={!!formData.prixUnitaireM3_HT && formData.prixUnitaireM3_HT !== ''}
-            />
-
-            <Input
-              label="Taux TVA Eau (%)"
-              type="number"
-              name="tauxTVA_Eau"
-              value={formData.tauxTVA_Eau}
-              onChange={handleChange}
-              min="0"
-              max="100"
-              step="0.01"
-              required
-              disabled={!!formData.tauxTVA_Eau && formData.tauxTVA_Eau !== ''}
-            />
+            {/* Colonne à gauche pour les champs Eau */}
+            <div className="water-fields-column">
+              <div className="water-field-group">
+                <div className="water-field-item">
+                  <label className="water-field-label">Prix Unitaire Eau HT (DZD/m³)*</label>
+                  <div className="water-field-value">
+                    {formData.typeDossier ? (
+                      (() => {
+                        const tarifType = formData.typeDossier === 'CITERNAGE' ? 'CITERNAGE' : 
+                                        formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
+                                        formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
+                        const tarif = tarifType ? getTarifByType(tarifType) : null;
+                        return tarif ? `${tarif.PrixHT.toFixed(2)} DZD/m³` : 'Tarif non disponible';
+                      })()
+                    ) : 'Sélectionnez un type de devis'}
+                  </div>
+                </div>
+                <div className="water-field-item">
+                  <label className="water-field-label">Taux TVA Eau (%)*</label>
+                  <div className="water-field-value">
+                    {formData.typeDossier ? (
+                      (() => {
+                        const tarifType = formData.typeDossier === 'CITERNAGE' ? 'CITERNAGE' : 
+                                        formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
+                                        formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
+                        const tarif = tarifType ? getTarifByType(tarifType) : null;
+                        return tarif ? `${(tarif.TauxTVA * 100).toFixed(2)} %` : 'TVA non disponible';
+                      })()
+                    ) : 'Sélectionnez un type de devis'}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Colonne principale - reste des champs */}
+            <div className="main-fields">
+              {/* Les autres champs iront ici si nécessaire */}
+            </div>
           </div>
 
           <div className="section-header">

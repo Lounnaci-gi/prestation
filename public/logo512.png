@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#0369a1" rx="40"/>
-  <circle cx="256" cy="200" r="80" fill="white"/>
-  <path d="M160 320 Q256 420 352 320" stroke="white" stroke-width="20" fill="none"/>
-  <text x="256" y="450" font-family="Arial" font-size="64" fill="white" text-anchor="middle" font-weight="bold">EAU</text>
-</svg>
