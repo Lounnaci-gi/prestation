@@ -1,50 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Table from '../../components/Table';
 import DevisForm from '../../components/DevisForm';
 import AlertService from '../../utils/alertService';
+import { createDevis } from '../../api/devisApi';
 import './Devis.css';
 
 const Devis = () => {
   const [showForm, setShowForm] = useState(false);
-  const [mockDevis, setMockDevis] = useState([
-    { id: 1, code: 'DEV-2026-001', client: 'Entreprise ABC', date: '2026-01-14', montant: '45,000 DZD', statut: 'ACCEPTE' },
-    { id: 2, code: 'DEV-2026-002', client: 'Société XYZ', date: '2026-01-13', montant: '32,500 DZD', statut: 'EN ATTENTE' },
-    { id: 3, code: 'DEV-2026-003', client: 'Client DEF', date: '2026-01-12', montant: '28,000 DZD', statut: 'REFUSE' },
-  ]);
+  const [devisList, setDevisList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const handleCreateDevis = async (devisData) => {
-    // Generate new code
-    const newCode = `DEV-2026-${String(mockDevis.length + 1).padStart(3, '0')}`;
-    
-    // Get client name from mock data
-    const clientNames = {
-      '1': 'Entreprise ABC',
-      '2': 'Société XYZ',
-      '3': 'Client DEF',
-      '4': 'Organisation GHI',
-      '5': 'Société Algérie Eau',
-      '6': 'Entreprise Hydro Plus',
-      '7': 'SARL Aqua Services',
-      '8': 'Entreprise Nationale des Eaux',
-    };
-
-    const newDevis = {
-      id: mockDevis.length + 1,
-      code: newCode,
-      client: clientNames[devisData.clientId] || devisData.nomRaisonSociale || 'Client Inconnu',
-      date: devisData.dateDevis,
-      montant: `${devisData.totalTTC.toFixed(2)} DZD`,
-      statut: devisData.statut,
-    };
-
-    setMockDevis([newDevis, ...mockDevis]);
-    setShowForm(false);
-    
-    // Show success message
-    await AlertService.success('Devis créé', 'Le devis a été créé avec succès!');
+    try {
+      console.log('Données envoyées au backend:', devisData);
+      // Appeler l'API pour créer le devis
+      const result = await createDevis(devisData);
+      
+      console.log('Réponse du backend:', result);
+      
+      // Rafraîchir la liste des devis
+      // Pour simplifier, on va juste ajouter le nouveau devis à la liste locale
+      // Dans une vraie application, on devrait recharger depuis l'API
+      const newDevis = {
+        id: result.DevisID,
+        code: result.CodeDevis,
+        client: result.NomRaisonSociale,
+        date: result.DateVente.split('T')[0],
+        montant: `${result.TotalTTC.toFixed(2)} DZD`,
+        statut: result.Statut,
+      };
+      
+      setDevisList([newDevis, ...devisList]);
+      setShowForm(false);
+      
+      // Show success message
+      await AlertService.success('Devis créé', 'Le devis a été créé avec succès dans la base de données!');
+    } catch (error) {
+      console.error('Erreur lors de la création du devis:', error);
+      console.error('Détails de l\'erreur:', error);
+      await AlertService.error('Erreur', error.error || 'Une erreur est survenue lors de la création du devis');
+    }
   };
+
+  const loadDevis = async () => {
+    try {
+      setLoading(true);
+      // Pour l'instant, on utilise un tableau vide car l'API de lecture n'est pas encore implémentée
+      // Mais on pourra l'ajouter plus tard
+      setDevisList([]);
+    } catch (error) {
+      console.error('Erreur lors du chargement des devis:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDevis();
+  }, []);
 
   const handleCancel = async () => {
     const result = await AlertService.confirm(
@@ -107,7 +122,11 @@ const Devis = () => {
         </Card>
       ) : (
         <Card>
-          <Table columns={columns} data={mockDevis} />
+          {loading ? (
+            <div className="loading">Chargement des devis...</div>
+          ) : (
+            <Table columns={columns} data={devisList} />
+          )}
         </Card>
       )}
     </div>

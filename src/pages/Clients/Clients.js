@@ -1,19 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Table from '../../components/Table';
 import Input from '../../components/Input';
+import { getAllClients } from '../../api/clientsApi';
+import AlertService from '../../utils/alertService';
 import './Clients.css';
 
 const Clients = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const mockClients = [
-    { id: 1, code: 'CLI001', nom: 'Entreprise ABC', adresse: 'Alger', telephone: '0555123456', email: 'contact@abc.dz' },
-    { id: 2, code: 'CLI002', nom: 'Société XYZ', adresse: 'Oran', telephone: '0555234567', email: 'info@xyz.dz' },
-    { id: 3, code: 'CLI003', nom: 'Client DEF', adresse: 'Constantine', telephone: '0555345678', email: 'def@email.dz' },
-    { id: 4, code: 'CLI004', nom: 'Organisation GHI', adresse: 'Annaba', telephone: '0555456789', email: 'contact@ghi.dz' },
-  ];
+  const loadClients = async () => {
+    try {
+      setLoading(true);
+      const clientsFromDb = await getAllClients();
+      
+      // Transformer les données pour correspondre au format du tableau
+      const formattedClients = clientsFromDb.map(client => ({
+        id: client.ClientID,
+        code: client.CodeClient,
+        nom: client.NomRaisonSociale,
+        adresse: client.Adresse,
+        telephone: client.Telephone,
+        email: client.Email
+      }));
+      
+      setClients(formattedClients);
+    } catch (error) {
+      console.error('Erreur lors du chargement des clients:', error);
+      await AlertService.error('Erreur', 'Impossible de charger la liste des clients');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadClients();
+  }, []);
 
   const columns = [
     { header: 'Code', key: 'code' },
@@ -34,7 +59,7 @@ const Clients = () => {
     },
   ];
 
-  const filteredClients = mockClients.filter(client =>
+  const filteredClients = clients.filter(client =>
     client.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.code.toLowerCase().includes(searchTerm.toLowerCase())
   );

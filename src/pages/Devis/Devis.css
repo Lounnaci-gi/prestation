@@ -16,3 +16,10 @@
   background-color: #fee2e2;
   color: #dc2626;
 }
+
+.loading {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}

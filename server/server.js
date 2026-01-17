@@ -518,6 +518,331 @@ app.delete('/api/tarifs-historique/:id', (req, res) => {
   });
 });
 
+// Endpoint pour récupérer tous les clients
+app.get('/api/clients', (req, res) => {
+  if (!isConnected) {
+    return res.json([]);
+  }
+
+  const query = 'SELECT ClientID, CodeClient, NomRaisonSociale, Adresse, Telephone, Email FROM Clients ORDER BY NomRaisonSociale ASC';
+  
+  executeQuery(query, [], (err, results) => {
+    if (err) {
+      console.error('Erreur lors de la récupération des clients:', err);
+      res.status(500).json({ error: 'Erreur lors de la récupération des clients' });
+    } else {
+      res.json(results || []);
+    }
+  });
+});
+
+// Endpoint pour créer un nouveau client
+app.post('/api/clients', async (req, res) => {
+  const { CodeClient, NomRaisonSociale, Adresse, Telephone, Email } = req.body;
+
+  // Validation des données requises
+  if (!CodeClient || !NomRaisonSociale || !Adresse) {
+    return res.status(400).json({ error: 'Code client, nom/raison sociale et adresse sont requis' });
+  }
+
+  try {
+    // Vérifier si le code client existe déjà
+    const checkQuery = 'SELECT ClientID FROM Clients WHERE CodeClient = @codeClient';
+    const checkParams = [
+      { name: 'codeClient', type: 'varchar', value: CodeClient }
+    ];
+
+    const existingClients = await new Promise((resolve, reject) => {
+      executeQuery(checkQuery, checkParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (existingClients && existingClients.length > 0) {
+      return res.status(409).json({ error: 'Un client avec ce code existe déjà' });
+    }
+
+    // Insérer le nouveau client
+    const insertQuery = `INSERT INTO Clients (CodeClient, NomRaisonSociale, Adresse, Telephone, Email)
+      OUTPUT INSERTED.*
+      VALUES (@codeClient, @nomRaisonSociale, @adresse, @telephone, @email)`;
+    
+    const insertParams = [
+      { name: 'codeClient', type: 'varchar', value: CodeClient },
+      { name: 'nomRaisonSociale', type: 'nvarchar', value: NomRaisonSociale },
+      { name: 'adresse', type: 'nvarchar', value: Adresse },
+      { name: 'telephone', type: 'varchar', value: Telephone || null },
+      { name: 'email', type: 'varchar', value: Email || null }
+    ];
+
+    const result = await new Promise((resolve, reject) => {
+      executeQuery(insertQuery, insertParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (result && result.length > 0) {
+      res.status(201).json(result[0]);
+    } else {
+      res.status(500).json({ error: 'Erreur lors de la création du client' });
+    }
+  } catch (error) {
+    console.error('Erreur lors de la création du client:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la création du client', details: error.message });
+  }
+});
+
+// Endpoint pour sauvegarder un nouveau devis
+app.post('/api/devis', async (req, res) => {
+  const {
+    clientId,
+    codeClient,
+    nomRaisonSociale,
+    adresse,
+    telephone,
+    email,
+    typeDossier,
+    dateDevis,
+    statut,
+    notes,
+    prixUnitaireM3_HT,
+    tauxTVA_Eau,
+    inclureTransport,
+    prixTransportUnitaire_HT,
+    tauxTVA_Transport,
+    citerneRows,
+    // Champs de totaux
+    volumeTotal,
+    totalEauHT,
+    totalEauTVA,
+    totalEauTTC,
+    totalTransportHT,
+    totalTransportTVA,
+    totalTransportTTC,
+    totalHT,
+    totalTVA,
+    totalTTC
+  } = req.body;
+
+  try {
+    // Valider les données requises
+    if (!clientId || !typeDossier || !dateDevis) {
+      return res.status(400).json({ error: 'Client, type de dossier et date du devis sont requis' });
+    }
+
+    if (!citerneRows || !Array.isArray(citerneRows) || citerneRows.length === 0) {
+      return res.status(400).json({ error: 'Au moins une ligne de citerne est requise' });
+    }
+
+    // Valider que le client existe
+    const clientCheckQuery = 'SELECT ClientID FROM Clients WHERE ClientID = @clientId';
+    const clientCheckParams = [
+      { name: 'clientId', type: 'int', value: parseInt(clientId) }
+    ];
+
+    const clientResults = await new Promise((resolve, reject) => {
+      executeQuery(clientCheckQuery, clientCheckParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (!clientResults || clientResults.length === 0) {
+      return res.status(404).json({ error: 'Client non trouvé' });
+    }
+
+    // Générer le code devis
+    const codeDevis = `DEV-${new Date(dateDevis).getFullYear()}-${Date.now().toString().slice(-6)}`;
+
+    // Commencer une transaction - créer la vente d'abord
+    const venteQuery = `
+      INSERT INTO Ventes (ClientID, TypeDossier, DateVente)
+      OUTPUT INSERTED.VenteID
+      VALUES (@clientId, @typeDossier, @dateVente)
+    `;
+    
+    const venteParams = [
+      { name: 'clientId', type: 'int', value: parseInt(clientId) },
+      { name: 'typeDossier', type: 'varchar', value: typeDossier },
+      { name: 'dateVente', type: 'datetime', value: new Date(dateDevis) }
+    ];
+
+    const venteResult = await new Promise((resolve, reject) => {
+      executeQuery(venteQuery, venteParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (!venteResult || venteResult.length === 0) {
+      return res.status(500).json({ error: 'Erreur lors de la création de la vente' });
+    }
+
+    const venteId = venteResult[0].VenteID;
+
+    // Créer le devis
+    const devisQuery = `
+      INSERT INTO Devis (VenteID, CodeDevis, Statut)
+      OUTPUT INSERTED.*
+      VALUES (@venteId, @codeDevis, @statut)
+    `;
+    
+    const devisParams = [
+      { name: 'venteId', type: 'int', value: venteId },
+      { name: 'codeDevis', type: 'varchar', value: codeDevis },
+      { name: 'statut', type: 'varchar', value: statut || 'EN ATTENTE' }
+    ];
+
+    const devisResult = await new Promise((resolve, reject) => {
+      executeQuery(devisQuery, devisParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (!devisResult || devisResult.length === 0) {
+      return res.status(500).json({ error: 'Erreur lors de la création du devis' });
+    }
+
+    // Créer les lignes de vente pour chaque citerne
+    for (const row of citerneRows) {
+      const {
+        nombreCiternes,
+        volumeParCiterne,
+        inclureTransport: rowIncludeTransport
+      } = row;
+
+      // Calculer le prix de transport en fonction du volume
+      let prixTransport = 0;
+      if (rowIncludeTransport) {
+        // Convertir le volume en entier de manière sécurisée
+        const volumeEntier = parseInt(volumeParCiterne);
+        if (!isNaN(volumeEntier) && volumeEntier > 0) {
+          // Requête pour obtenir le prix de transport en fonction du volume
+          const transportQuery = `
+            SELECT TOP 1 PrixHT 
+            FROM Tarifs_Historique 
+            WHERE TypePrestation = 'TRANSPORT'
+              AND (VolumeReference IS NULL OR VolumeReference <= @volume)
+            ORDER BY CASE WHEN VolumeReference IS NULL THEN 1 ELSE 0 END, VolumeReference DESC
+          `;
+          
+          const transportParams = [
+            { name: 'volume', type: 'int', value: volumeEntier }
+          ];
+
+          try {
+            const transportResults = await new Promise((resolve, reject) => {
+              executeQuery(transportQuery, transportParams, (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
+              });
+            });
+
+            if (transportResults && transportResults.length > 0) {
+              prixTransport = transportResults[0].PrixHT;
+            } else {
+              // Si aucun tarif de transport trouvé, utiliser la valeur du formulaire
+              prixTransport = parseFloat(prixTransportUnitaire_HT) || 0;
+            }
+          } catch (transportError) {
+            console.warn('Erreur lors de la récupération du tarif de transport, utilisation de la valeur par défaut:', transportError.message);
+            prixTransport = parseFloat(prixTransportUnitaire_HT) || 0;
+          }
+        }
+      }
+
+      const ligneQuery = `
+        INSERT INTO LignesVentes (
+          VenteID, 
+          NombreCiternes, 
+          VolumeParCiterne, 
+          PrixUnitaireM3_HT, 
+          TauxTVA_Eau, 
+          PrixTransportUnitaire_HT, 
+          TauxTVA_Transport
+        )
+        VALUES (
+          @venteId, 
+          @nombreCiternes, 
+          @volumeParCiterne, 
+          @prixUnitaireM3_HT, 
+          @tauxTVA_Eau, 
+          @prixTransportUnitaire_HT, 
+          @tauxTVA_Transport
+        )
+      `;
+      
+      const ligneParams = [
+        { name: 'venteId', type: 'int', value: venteId },
+        { name: 'nombreCiternes', type: 'int', value: parseInt(nombreCiternes) || 1 },
+        { name: 'volumeParCiterne', type: 'int', value: parseInt(volumeParCiterne) || 0 },
+        { name: 'prixUnitaireM3_HT', type: 'decimal', value: parseFloat(prixUnitaireM3_HT) || 0 },
+        { name: 'tauxTVA_Eau', type: 'decimal', value: parseFloat(tauxTVA_Eau) || 0 },
+        { name: 'prixTransportUnitaire_HT', type: 'decimal', value: parseFloat(prixTransport) || 0 },
+        { name: 'tauxTVA_Transport', type: 'decimal', value: parseFloat(tauxTVA_Transport) || 0 }
+      ];
+
+      await new Promise((resolve, reject) => {
+        executeQuery(ligneQuery, ligneParams, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+    }
+
+    // Récupérer les données complètes du devis pour la réponse
+    const responseQuery = `
+      SELECT 
+        d.DevisID,
+        d.CodeDevis,
+        d.Statut,
+        d.DateCreation,
+        d.DateModification,
+        v.TypeDossier,
+        v.DateVente,
+        c.NomRaisonSociale,
+        c.Adresse,
+        c.Telephone,
+        c.Email,
+        SUM(lv.NombreCiternes * lv.VolumeParCiterne) as VolumeTotal,
+        SUM((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT)) as TotalEauHT,
+        SUM(((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) * lv.TauxTVA_Eau)) as TotalEauTVA,
+        SUM((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) + ((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) * lv.TauxTVA_Eau)) as TotalEauTTC,
+        SUM(lv.NombreCiternes * lv.PrixTransportUnitaire_HT) as TotalTransportHT,
+        SUM((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) * lv.TauxTVA_Transport) as TotalTransportTVA,
+        SUM((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) + ((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) * lv.TauxTVA_Transport)) as TotalTransportTTC,
+        SUM((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) + (lv.NombreCiternes * lv.PrixTransportUnitaire_HT)) as TotalHT,
+        SUM(((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) * lv.TauxTVA_Eau) + ((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) * lv.TauxTVA_Transport)) as TotalTVA,
+        SUM((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) + ((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) * lv.TauxTVA_Eau) + (lv.NombreCiternes * lv.PrixTransportUnitaire_HT) + ((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) * lv.TauxTVA_Transport)) as TotalTTC
+      FROM Devis d
+      JOIN Ventes v ON d.VenteID = v.VenteID
+      JOIN Clients c ON v.ClientID = c.ClientID
+      LEFT JOIN LignesVentes lv ON v.VenteID = lv.VenteID
+      WHERE d.DevisID = @devisId
+      GROUP BY d.DevisID, d.CodeDevis, d.Statut, d.DateCreation, d.DateModification, v.TypeDossier, v.DateVente, c.NomRaisonSociale, c.Adresse, c.Telephone, c.Email
+    `;
+    
+    const responseParams = [
+      { name: 'devisId', type: 'int', value: devisResult[0].DevisID }
+    ];
+
+    const finalResult = await new Promise((resolve, reject) => {
+      executeQuery(responseQuery, responseParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    res.status(201).json(finalResult[0]);
+  } catch (error) {
+    console.error('Erreur lors de la création du devis:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la création du devis', details: error.message });
+  }
+});
+
 // Endpoint de test pour vérérifier que le serveur fonctionne
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Serveur backend fonctionnel', timestamp: new Date() });

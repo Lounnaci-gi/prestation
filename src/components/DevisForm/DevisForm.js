@@ -5,6 +5,7 @@ import SearchableSelect from '../../components/SearchableSelect';
 import Button from '../../components/Button';
 import AlertService from '../../utils/alertService';
 import { getAllTarifs } from '../../api/tarifsApi';
+import { getAllClients } from '../../api/clientsApi';
 import { amountToWords } from '../../utils/numberToWords';
 import './DevisForm.css';
 
@@ -32,6 +33,9 @@ const DevisForm = ({ onSubmit, onCancel }) => {
   const [citerneRows, setCiterneRows] = useState([
     { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }
   ]);
+
+  const [clients, setClients] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(true);
 
   const addCiterneRow = () => {
     setCiterneRows([...citerneRows, { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }]);
@@ -149,18 +153,38 @@ const DevisForm = ({ onSubmit, onCancel }) => {
     }
   }, [formData.volumeParCiterne, tarifs]);
 
-  // Mock data - In production, fetch from API
-  const clients = [
-    { value: 'new', label: '+ Créer un nouveau client', code: 'NEW', isNew: true },
-    { value: '1', label: 'Entreprise ABC', code: 'CLI001', adresse: 'Alger Centre, Algeria', telephone: '0555123456', email: 'contact@abc.dz' },
-    { value: '2', label: 'Société XYZ', code: 'CLI002', adresse: 'Oran, Algeria', telephone: '0555234567', email: 'info@xyz.dz' },
-    { value: '3', label: 'Client DEF', code: 'CLI003', adresse: 'Constantine, Algeria', telephone: '0555345678', email: 'def@email.dz' },
-    { value: '4', label: 'Organisation GHI', code: 'CLI004', adresse: 'Annaba, Algeria', telephone: '0555456789', email: 'contact@ghi.dz' },
-    { value: '5', label: 'Société Algérie Eau', code: 'CLI005', adresse: 'Blida, Algeria', telephone: '0555567890', email: 'info@algerieeau.dz' },
-    { value: '6', label: 'Entreprise Hydro Plus', code: 'CLI006', adresse: 'Tlemcen, Algeria', telephone: '0555678901', email: 'contact@hydroplus.dz' },
-    { value: '7', label: 'SARL Aqua Services', code: 'CLI007', adresse: 'Sétif, Algeria', telephone: '0555789012', email: 'info@aquaservices.dz' },
-    { value: '8', label: 'Entreprise Nationale des Eaux', code: 'CLI008', adresse: 'Alger, Algeria', telephone: '0555890123', email: 'contact@ene.dz' },
-  ];
+  // Charger les clients depuis la base de données
+  const loadClients = async () => {
+    try {
+      setLoadingClients(true);
+      const clientsFromDb = await getAllClients();
+      
+      // Transformer les données pour correspondre au format attendu par le composant
+      const transformedClients = [
+        { value: 'new', label: '+ Créer un nouveau client', code: 'NEW', isNew: true },
+        ...clientsFromDb.map(client => ({
+          value: client.ClientID.toString(),
+          label: client.NomRaisonSociale,
+          code: client.CodeClient,
+          adresse: client.Adresse,
+          telephone: client.Telephone,
+          email: client.Email
+        }))
+      ];
+      
+      setClients(transformedClients);
+    } catch (error) {
+      console.error('Erreur lors du chargement des clients:', error);
+      // En cas d'erreur, on garde quand même l'option pour créer un nouveau client
+      setClients([{ value: 'new', label: '+ Créer un nouveau client', code: 'NEW', isNew: true }]);
+    } finally {
+      setLoadingClients(false);
+    }
+  };
+
+  useEffect(() => {
+    loadClients();
+  }, []);
 
   const typesDossier = [
     { value: 'CITERNAGE', label: 'Citernage' },
@@ -190,7 +214,7 @@ const DevisForm = ({ onSubmit, onCancel }) => {
       } else {
         setIsCreatingNewClient(false);
         const selectedClient = clients.find(c => c.value === value);
-        if (selectedClient) {
+        if (selectedClient && selectedClient.code) { // Vérifier que ce n'est pas l'option 'new'
           setFormData(prev => ({
             ...prev,
             clientId: value,
@@ -231,21 +255,55 @@ const DevisForm = ({ onSubmit, onCancel }) => {
 
     if (!formData.typeDossier) newErrors.typeDossier = 'Type de devis requis';
     if (formData.typeDossier && !formData.clientId) newErrors.clientId = 'Client requis';
-    if (formData.clientId && !formData.codeClient) {
-      newErrors.codeClient = 'Code client requis';
-    } else if (formData.clientId && formData.codeClient && formData.codeClient.length !== 6) {
-      newErrors.codeClient = 'Le code client doit contenir exactement 6 caractères';
+    
+    // Validation du client
+    if (formData.clientId) {
+      if (!formData.codeClient) {
+        newErrors.codeClient = 'Code client requis';
+      } else if (formData.codeClient.length !== 6) {
+        newErrors.codeClient = 'Le code client doit contenir exactement 6 caractères';
+      }
+      if (!formData.nomRaisonSociale) newErrors.nomRaisonSociale = 'Nom/Raison sociale requis';
+      if (!formData.adresse) newErrors.adresse = 'Adresse requise';
     }
-    if (formData.clientId && !formData.nomRaisonSociale) newErrors.nomRaisonSociale = 'Nom/Raison sociale requis';
-    if (formData.clientId && !formData.adresse) newErrors.adresse = 'Adresse requise';
-    if (formData.typeDossier && (!formData.nombreCiternes || formData.nombreCiternes < 1)) {
-      newErrors.nombreCiternes = 'Nombre de citernes invalide';
+
+    // Validation des citernes
+    if (formData.typeDossier) {
+      let hasValidCiterne = false;
+      
+      for (let i = 0; i < citerneRows.length; i++) {
+        const row = citerneRows[i];
+        const nombreCiternes = parseInt(row.nombreCiternes) || 0;
+        const volumeParCiterne = parseFloat(row.volumeParCiterne) || 0;
+        
+        if (nombreCiternes > 0 && volumeParCiterne > 0) {
+          hasValidCiterne = true;
+          
+          // Validation des valeurs individuelles
+          if (nombreCiternes < 1) {
+            newErrors[`citerne_${i}_nombre`] = 'Nombre de citernes doit être ≥ 1';
+          }
+          if (volumeParCiterne < 1 || volumeParCiterne > 500) {
+            newErrors[`citerne_${i}_volume`] = 'Volume doit être entre 1 et 500 m³';
+          }
+        }
+      }
+      
+      if (!hasValidCiterne) {
+        newErrors.citerne_general = 'Au moins une citerne avec quantité et volume doit être renseignée';
+      }
     }
-    if (formData.typeDossier && (!formData.volumeParCiterne || formData.volumeParCiterne < 1 || formData.volumeParCiterne > 500)) {
-      newErrors.volumeParCiterne = 'Volume doit être entre 1 et 500 m³';
-    }
-    if (formData.typeDossier && (!formData.prixUnitaireM3_HT || formData.prixUnitaireM3_HT <= 0)) {
-      newErrors.prixUnitaireM3_HT = 'Prix unitaire requis';
+
+    // Validation des tarifs (chargés automatiquement)
+    if (formData.typeDossier) {
+      const tarifType = formData.typeDossier === 'CITERNAGE' ? 'CITERNAGE' : 
+                       formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
+                       formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
+      const tarif = tarifType ? getTarifByType(tarifType) : null;
+      
+      if (!tarif || !tarif.PrixHT || tarif.PrixHT <= 0) {
+        newErrors.tarif = `Tarif non disponible pour le type ${formData.typeDossier}`;
+      }
     }
 
     setErrors(newErrors);
@@ -358,12 +416,20 @@ const DevisForm = ({ onSubmit, onCancel }) => {
   };
 
   const handleSubmit = async (e) => {
+    console.log('=== handleSubmit called ===');
     e.preventDefault();
+    console.log('Form data:', formData);
+    console.log('Form errors:', errors);
     
-    if (validateForm()) {
+    const isValid = validateForm();
+    console.log('Form validation result:', isValid);
+    
+    if (isValid) {
       const totals = calculateTotals();
+      console.log('Calculated totals:', totals);
       
       // Afficher une confirmation avant de soumettre
+      console.log('Showing confirmation dialog...');
       const result = await AlertService.confirm(
         'Créer le devis', 
         'Êtes-vous sûr de vouloir créer ce devis ?', 
@@ -371,10 +437,27 @@ const DevisForm = ({ onSubmit, onCancel }) => {
         'Annuler'
       );
       
+      console.log('Confirmation result:', result);
+      
       if (result.isConfirmed) {
-        onSubmit({ ...formData, ...totals });
+        const submitData = { 
+          ...formData, 
+          citerneRows,
+          ...totals
+        };
+        
+        console.log('Calling onSubmit with data:', submitData);
+        onSubmit(submitData);
+        console.log('Showing success message...');
         await AlertService.success('Devis créé', 'Le devis a été créé avec succès.');
+      } else {
+        console.log('User cancelled submission');
       }
+      console.log('Form validation failed');
+      // Afficher les erreurs de validation
+      Object.keys(errors).forEach(key => {
+        console.log(`Error in ${key}:`, errors[key]);
+      });
     }
   };
 
