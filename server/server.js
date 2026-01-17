@@ -76,34 +76,49 @@ const executeQuery = (query, params, callback) => {
   // Ajouter les paramètres à la requête avec les types TEDIOUS corrects
   params.forEach((param) => {
     let tediousType;
-    
+        
     // Convertir les types string en objets TEDIOUS
     switch(param.type.toLowerCase()) {
       case 'varchar':
       case 'nvarchar':
         tediousType = TYPES.VarChar;
+        // Gérer les valeurs null pour les types varchar
+        const varcharValue = param.value === null ? null : param.value;
+        request.addParameter(param.name, tediousType, varcharValue);
         break;
       case 'int':
         tediousType = TYPES.Int;
+        // Gérer les valeurs null pour les types int
+        const intValue = param.value === null || param.value === undefined ? null : param.value;
+        request.addParameter(param.name, tediousType, intValue);
         break;
       case 'float':
         tediousType = TYPES.Float;
+        // Gérer les valeurs null pour les types float
+        const floatValue = param.value === null || param.value === undefined ? null : param.value;
+        request.addParameter(param.name, tediousType, floatValue);
         break;
       case 'datetime':
         tediousType = TYPES.DateTime;
+        // Gérer les valeurs null pour les types datetime
+        const datetimeValue = param.value === null || param.value === undefined ? null : param.value;
+        request.addParameter(param.name, tediousType, datetimeValue);
         break;
       case 'decimal':
         // Pour les types décimaux, on spécifie la précision et l'échelle
         tediousType = TYPES.Decimal;
+        // Gérer les valeurs null pour les types decimal
+        const decimalValue = param.value === null || param.value === undefined ? null : param.value;
         // Ajouter les propriétés precision et scale
-        request.addParameter(param.name, tediousType, param.value, { precision: 18, scale: 4 });
-        return; // Sortir après avoir ajouté le paramètre avec précision
+        request.addParameter(param.name, tediousType, decimalValue, { precision: 18, scale: 2 });
+        break;
       default:
         tediousType = TYPES.VarChar; // Par défaut
+        // Gérer les valeurs null pour les types par défaut
+        const defaultValue = param.value === null || param.value === undefined ? null : param.value;
+        request.addParameter(param.name, tediousType, defaultValue);
         console.warn(`Type inconnu: ${param.type}, utilisation de VarChar`);
     }
-    
-    request.addParameter(param.name, tediousType, param.value);
   });
 
   let results = [];
@@ -151,7 +166,7 @@ app.post('/api/tarifs-historique', async (req, res) => {
 
   try {
     // FAIRE LA CONVERSION IMMÉDIATEMENT AU DÉBUT
-    const typePrestationDB = TypePrestation.trim().toUpperCase() === 'VENTE' ? 'CITERNAGE' : TypePrestation.trim();
+    const typePrestationDB = TypePrestation.trim().toUpperCase() === 'CITERNAGE' ? 'CITERNAGE' : TypePrestation.trim();
     
     // Conversion et validation des valeurs numériques
     const prixHT = parseFloat(parseFloat(PrixHT).toFixed(2));
@@ -219,7 +234,7 @@ app.post('/api/tarifs-historique', async (req, res) => {
 
     if (existingTarif) {
       return res.status(409).json({ 
-        error: `Un tarif pour "${TypePrestation}" existe déjà (ID: ${existingTarif.TarifID})`,
+        error: `Un tarif pour "${typePrestationDB}" existe déjà (ID: ${existingTarif.TarifID})`,
         existingTarif: existingTarif,
         code: 'DUPLICATE_TARIFF'
       });
@@ -301,6 +316,9 @@ app.put('/api/tarifs-historique/:id', async (req, res) => {
     return res.status(400).json({ error: 'ID invalide' });
   }
 
+  // Conversion automatique du type de prestation
+  const typePrestationDB = TypePrestation.trim().toUpperCase() === 'CITERNAGE' ? 'CITERNAGE' : TypePrestation.trim();
+  
   // Conversion automatique du taux TVA : si > 10, on le divise par 100 (ex: 19 -> 0.19)
   let tauxTVAInput = parseFloat(TauxTVA);
   let tauxTVA;
@@ -315,7 +333,15 @@ app.put('/api/tarifs-historique/:id', async (req, res) => {
   
   // Conversion et validation des valeurs numériques
   const prixHT = parseFloat(parseFloat(PrixHT).toFixed(2));
-  const volumeRef = VolumeReference !== undefined ? parseInt(VolumeReference) : null;
+  
+  // Gérer correctement VolumeReference : null, undefined, ou valeur invalide
+  let volumeRef = null;
+  if (VolumeReference !== undefined && VolumeReference !== null && VolumeReference !== '') {
+    const parsedVolume = parseInt(VolumeReference);
+    if (!isNaN(parsedVolume)) {
+      volumeRef = parsedVolume;
+    }
+  }
   
   // Validation
   if (isNaN(prixHT) || prixHT <= 0 || prixHT > 999999999999999.99) {
@@ -335,9 +361,9 @@ app.put('/api/tarifs-historique/:id', async (req, res) => {
     });
 
     // Nettoyer le type de prestation pour la comparaison
-    const cleanInputType = (TypePrestation || '').trim().toUpperCase();
+    const cleanInputType = typePrestationDB.toUpperCase();
     
-    // Vérifier les doublons - PLUS STRICT
+    // Vérifier les doublons - Permettre la mise à jour du tarif existant
     const existingTarif = allTarifs.find(tarif => {
       const cleanDbType = (tarif.TypePrestation || '').trim().toUpperCase();
       const isActive = !tarif.DateFin || new Date(tarif.DateFin) > new Date();
@@ -370,7 +396,7 @@ app.put('/api/tarifs-historique/:id', async (req, res) => {
 
     if (existingTarif) {
       return res.status(409).json({ 
-        error: `Un tarif pour "${TypePrestation}" existe déjà (ID: ${existingTarif.TarifID})`,
+        error: `Un tarif pour "${typePrestationDB}" existe déjà (ID: ${existingTarif.TarifID})`,
         existingTarif: existingTarif,
         code: 'DUPLICATE_TARIFF'
       });
@@ -381,12 +407,11 @@ app.put('/api/tarifs-historique/:id', async (req, res) => {
       query = `
         UPDATE Tarifs_Historique
         SET TypePrestation = @param0, PrixHT = @param1, TauxTVA = @param2, DateDebut = @param3, VolumeReference = @param4
-        OUTPUT INSERTED.*
         WHERE TarifID = @param5
       `;
       
       params = [
-        { name: 'param0', type: 'varchar', value: TypePrestation },
+        { name: 'param0', type: 'varchar', value: typePrestationDB },
         { name: 'param1', type: 'decimal', value: prixHT }, // Type correspondant à la structure decimal(18,2)
         { name: 'param2', type: 'decimal', value: tauxTVA }, // Type correspondant à la structure decimal(6,4)
         { name: 'param3', type: 'datetime', value: new Date(DateDebut) },
@@ -397,12 +422,11 @@ app.put('/api/tarifs-historique/:id', async (req, res) => {
       query = `
         UPDATE Tarifs_Historique
         SET TypePrestation = @param0, PrixHT = @param1, TauxTVA = @param2, DateDebut = @param3, VolumeReference = NULL
-        OUTPUT INSERTED.*
         WHERE TarifID = @param4
       `;
       
       params = [
-        { name: 'param0', type: 'varchar', value: TypePrestation },
+        { name: 'param0', type: 'varchar', value: typePrestationDB },
         { name: 'param1', type: 'decimal', value: prixHT }, // Type correspondant à la structure decimal(18,2)
         { name: 'param2', type: 'decimal', value: tauxTVA }, // Type correspondant à la structure decimal(6,4)
         { name: 'param3', type: 'datetime', value: new Date(DateDebut) },
@@ -410,18 +434,46 @@ app.put('/api/tarifs-historique/:id', async (req, res) => {
       ];
     }
 
-    executeQuery(query, params, (err, results) => {
+    console.log('Exécution de la requête UPDATE avec params:', params);
+  executeQuery(query, params, (err, results) => {
       if (err) {
         console.error('Erreur lors de la mise à jour du tarif:', err);
-        res.status(500).json({ error: 'Erreur serveur lors de la mise à jour du tarif' });
+        console.error('Paramètres de la requête:', params);
+        // Vérifier si les headers n'ont pas déjà été envoyés
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Erreur serveur lors de la mise à jour du tarif', details: err.message });
+        }
         return;
       }
       
-      if (results && results.length > 0) {
-        res.json(results[0]);
-      } else {
-        res.status(404).json({ error: 'Tarif non trouvé' });
-      }
+      // Récupérer le tarif mis à jour
+      const selectQuery = 'SELECT * FROM Tarifs_Historique WHERE TarifID = @tarifId';
+      const selectParams = [
+        { name: 'tarifId', type: 'int', value: parseInt(id) }
+      ];
+      
+      executeQuery(selectQuery, selectParams, (selectErr, selectResults) => {
+        if (selectErr) {
+          console.error('Erreur lors de la récupération du tarif mis à jour:', selectErr);
+          // Vérifier si les headers n'ont pas déjà été envoyés
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Erreur serveur lors de la récupération du tarif mis à jour' });
+          }
+          return;
+        }
+        
+        if (selectResults && selectResults.length > 0) {
+          // Vérifier si les headers n'ont pas déjà été envoyés
+          if (!res.headersSent) {
+            res.json(selectResults[0]);
+          }
+        } else {
+          // Vérifier si les headers n'ont pas déjà été envoyés
+          if (!res.headersSent) {
+            res.status(404).json({ error: 'Tarif non trouvé après mise à jour' });
+          }
+        }
+      });
     });
   } catch (error) {
     console.error('ERREUR FATALE:', error);

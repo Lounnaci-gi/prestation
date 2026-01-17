@@ -19,8 +19,6 @@ const DevisForm = ({ onSubmit, onCancel }) => {
     email: '',
     // Quote fields
     typeDossier: '',
-    nombreCiternes: '1',
-    volumeParCiterne: '',
     prixUnitaireM3_HT: '',
     tauxTVA_Eau: '19',
     inclureTransport: false,
@@ -30,6 +28,32 @@ const DevisForm = ({ onSubmit, onCancel }) => {
     statut: 'EN ATTENTE',
     notes: '',
   });
+
+  const [citerneRows, setCiterneRows] = useState([
+    { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }
+  ]);
+
+  const addCiterneRow = () => {
+    setCiterneRows([...citerneRows, { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }]);
+  };
+
+  const removeCiterneRow = (id) => {
+    if (citerneRows.length > 1) {
+      setCiterneRows(citerneRows.filter(row => row.id !== id));
+    }
+  };
+
+  const updateCiterneRow = (id, field, value) => {
+    setCiterneRows(citerneRows.map(row => 
+      row.id === id ? { ...row, [field]: value } : row
+    ));
+  };
+
+  const toggleTransportCiterne = (id) => {
+    setCiterneRows(citerneRows.map(row => 
+      row.id === id ? { ...row, inclureTransport: !row.inclureTransport } : row
+    ));
+  };
 
   const [errors, setErrors] = useState({});
   const [isCreatingNewClient, setIsCreatingNewClient] = useState(false);
@@ -70,8 +94,8 @@ const DevisForm = ({ onSubmit, onCancel }) => {
       // Convertir le type de devis en type de prestation correspondant
       let typePrestation = '';
       switch (formData.typeDossier) {
-        case 'VENTE':
-          typePrestation = 'CITERNAGE'; // VENTE est converti en CITERNAGE dans le backend
+        case 'CITERNAGE':
+          typePrestation = 'CITERNAGE'; // CITERNAGE reste CITERNAGE
           break;
         case 'PROCES_VOL':
           typePrestation = 'VOL';
@@ -86,39 +110,25 @@ const DevisForm = ({ onSubmit, onCancel }) => {
       if (typePrestation) {
         const tarif = getTarifByType(typePrestation);
         if (tarif) {
-          // Mettre à jour le prix unitaire et la TVA si les champs sont vides
-          if (!formData.prixUnitaireM3_HT) {
-            setFormData(prev => ({
-              ...prev,
-              prixUnitaireM3_HT: tarif.PrixHT.toString()
-            }));
-          }
-          if (!formData.tauxTVA_Eau) {
-            setFormData(prev => ({
-              ...prev,
-              tauxTVA_Eau: (tarif.TauxTVA * 100).toString() // Convertir en pourcentage
-            }));
-          }
+          // Mettre à jour le prix unitaire et la TVA
+          setFormData(prev => ({
+            ...prev,
+            prixUnitaireM3_HT: tarif.PrixHT.toString(),
+            tauxTVA_Eau: (tarif.TauxTVA * 100).toString() // Convertir en pourcentage
+          }));
         }
       }
       
-      // Pour le transport, charger les tarifs de transport si le type de devis est VENTE
-      if (formData.typeDossier === 'VENTE') {
+      // Pour le transport, charger les tarifs de transport si le type de devis est CITERNAGE
+      if (formData.typeDossier === 'CITERNAGE') {
         const tarifTransport = getTarifByType('TRANSPORT');
         if (tarifTransport) {
-          // Mettre à jour le prix de transport et la TVA de transport si les champs sont vides
-          if (!formData.prixTransportUnitaire_HT) {
-            setFormData(prev => ({
-              ...prev,
-              prixTransportUnitaire_HT: tarifTransport.PrixHT.toString()
-            }));
-          }
-          if (!formData.tauxTVA_Transport) {
-            setFormData(prev => ({
-              ...prev,
-              tauxTVA_Transport: (tarifTransport.TauxTVA * 100).toString() // Convertir en pourcentage
-            }));
-          }
+          // Mettre à jour le prix de transport et la TVA de transport
+          setFormData(prev => ({
+            ...prev,
+            prixTransportUnitaire_HT: tarifTransport.PrixHT.toString(),
+            tauxTVA_Transport: (tarifTransport.TauxTVA * 100).toString() // Convertir en pourcentage
+          }));
         }
       }
     }
@@ -151,7 +161,7 @@ const DevisForm = ({ onSubmit, onCancel }) => {
   ];
 
   const typesDossier = [
-    { value: 'VENTE', label: 'Citernage' },
+    { value: 'CITERNAGE', label: 'Citernage' },
     { value: 'PROCES_VOL', label: 'Procès de Vol' },
     { value: 'ESSAI_RESEAU', label: 'Essai Réseau' },
   ];
@@ -291,25 +301,40 @@ const DevisForm = ({ onSubmit, onCancel }) => {
   };
 
   const calculateTotals = () => {
-    const nombreCiternes = parseFloat(formData.nombreCiternes) || 0;
-    const volumeParCiterne = parseFloat(formData.volumeParCiterne) || 0;
     const prixUnitaireM3_HT = parseFloat(formData.prixUnitaireM3_HT) || 0;
     const tauxTVA_Eau = parseFloat(formData.tauxTVA_Eau) || 0;
     const tauxTVA_Transport = parseFloat(formData.tauxTVA_Transport) || 0;
     
-    // Calculer le prix du transport en fonction du volume de la citerne
-    const prixTransportUnitaire_HT = getPrixTransportSelonVolume(volumeParCiterne);
-
-    // Calculate water cost
-    const volumeTotal = nombreCiternes * volumeParCiterne;
-    const totalEauHT = volumeTotal * prixUnitaireM3_HT;
+    // Calculate totals for all citerne rows
+    let totalVolume = 0;
+    let totalEauHT = 0;
+    let totalTransportHT = 0;
+    let totalTransportTVA = 0;
+    
+    citerneRows.forEach(row => {
+      const nombreCiternes = parseFloat(row.nombreCiternes) || 0;
+      const volumeParCiterne = parseFloat(row.volumeParCiterne) || 0;
+      const volumeTotalParLigne = nombreCiternes * volumeParCiterne;
+      
+      totalVolume += volumeTotalParLigne;
+      totalEauHT += volumeTotalParLigne * prixUnitaireM3_HT;
+      
+      // Calculer le prix du transport en fonction du volume de la citerne
+      const prixTransportUnitaire_HT = getPrixTransportSelonVolume(volumeParCiterne);
+      
+      // Transport inclus individuellement pour chaque ligne de citerne
+      if (row.inclureTransport) {
+        const transportHT = nombreCiternes * prixTransportUnitaire_HT;
+        totalTransportHT += transportHT;
+        totalTransportTVA += transportHT * (tauxTVA_Transport / 100);
+      }
+    });
+    
     const totalEauTVA = totalEauHT * (tauxTVA_Eau / 100);
     const totalEauTTC = totalEauHT + totalEauTVA;
 
-    // Calculate transport cost (only if transport is included)
-    const totalTransportHT = formData.inclureTransport ? nombreCiternes * prixTransportUnitaire_HT : 0;
-    const totalTransportTVA = formData.inclureTransport ? totalTransportHT * (tauxTVA_Transport / 100) : 0;
-    const totalTransportTTC = formData.inclureTransport ? totalTransportHT + totalTransportTVA : 0;
+    // Calculate transport cost (TVA calculated per row now)
+    const totalTransportTTC = totalTransportHT + totalTransportTVA;
 
     // Total
     const totalHT = totalEauHT + totalTransportHT;
@@ -317,7 +342,7 @@ const DevisForm = ({ onSubmit, onCancel }) => {
     const totalTTC = totalEauTTC + totalTransportTTC;
 
     return {
-      volumeTotal,
+      volumeTotal: totalVolume,
       totalEauHT,
       totalEauTVA,
       totalEauTTC,
@@ -369,8 +394,12 @@ const DevisForm = ({ onSubmit, onCancel }) => {
   return (
     <form onSubmit={handleSubmit} className="devis-form">
       <div className="form-header">
-        <h2 className="form-title">Créer un Nouveau Devis</h2>
-        <p className="form-subtitle">Remplissez les informations ci-dessous pour générer un devis</p>
+        <h2 className="form-title">Nouveau devis</h2>
+        <div className="header-actions">
+          <button className="btn btn-cancel" onClick={handleCancel}>Annuler</button>
+          <button className="btn btn-save" type="submit">Enregistrer</button>
+          <button className="btn btn-finalize">Finaliser et envoyer</button>
+        </div>
       </div>
 
       <div className="form-section">
@@ -498,178 +527,182 @@ const DevisForm = ({ onSubmit, onCancel }) => {
       )}
 
 
-      <div className="form-section">
-        <div className="section-header">
-          <h3 className="section-title">Détails de la Prestation</h3>
-        </div>
-        <div className="form-grid">
-          <Input
-            label="Nombre de Citernes"
-            type="number"
-            name="nombreCiternes"
-            value={formData.nombreCiternes}
-            onChange={handleChange}
-            min="1"
-            required
-            error={errors.nombreCiternes}
-          />
+      {formData.typeDossier && (
+        <div className="form-section">
+          <div className="section-header">
+            <h3 className="section-title">Détails de la Prestation</h3>
+          </div>
+          <div className="form-grid">
 
-          <Input
-            label="Volume par Citerne (m³)"
-            type="number"
-            name="volumeParCiterne"
-            value={formData.volumeParCiterne}
-            onChange={handleChange}
-            min="1"
-            max="500"
-            step="0.01"
-            required
-            error={errors.volumeParCiterne}
-          />
 
-          <Input
-            label="Prix Unitaire Eau HT (DZD/m³)"
-            type="number"
-            name="prixUnitaireM3_HT"
-            value={formData.prixUnitaireM3_HT}
-            onChange={handleChange}
-            min="0"
-            step="0.01"
-            required
-            error={errors.prixUnitaireM3_HT}
-          />
+            <Input
+              label="Prix Unitaire Eau HT (DZD/m³)"
+              type="number"
+              name="prixUnitaireM3_HT"
+              value={formData.prixUnitaireM3_HT}
+              onChange={handleChange}
+              min="0"
+              step="0.01"
+              required
+              error={errors.prixUnitaireM3_HT}
+              disabled={!!formData.prixUnitaireM3_HT && formData.prixUnitaireM3_HT !== ''}
+            />
 
-          <Input
-            label="Taux TVA Eau (%)"
-            type="number"
-            name="tauxTVA_Eau"
-            value={formData.tauxTVA_Eau}
-            onChange={handleChange}
-            min="0"
-            max="100"
-            step="0.01"
-            required
-          />
+            <Input
+              label="Taux TVA Eau (%)"
+              type="number"
+              name="tauxTVA_Eau"
+              value={formData.tauxTVA_Eau}
+              onChange={handleChange}
+              min="0"
+              max="100"
+              step="0.01"
+              required
+              disabled={!!formData.tauxTVA_Eau && formData.tauxTVA_Eau !== ''}
+            />
+          </div>
 
-          <div className="checkbox-field">
-            <label>
-              <input
-                type="checkbox"
-                name="inclureTransport"
-                checked={formData.inclureTransport}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setFormData(prev => ({
-                    ...prev,
-                    inclureTransport: checked
-                  }));
+          <div className="section-header">
+            <h3 className="section-title">Citernes</h3>
+          </div>
+          
+          <div className="citerne-table-container">
+            <table className="citerne-table">
+              <thead>
+                <tr>
+                  <th>Quantité</th>
+                  <th>Volume par Citerne (m³)</th>
+                  <th>Total Volume (m³)</th>
+                  <th>Inclure Transport</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {citerneRows.map((row, index) => {
+                  const nombreCiternes = parseFloat(row.nombreCiternes) || 0;
+                  const volumeParCiterne = parseFloat(row.volumeParCiterne) || 0;
+                  const totalVolume = (nombreCiternes * volumeParCiterne).toFixed(2);
                   
-                  // Clear transport errors when toggling
-                  if (errors.prixTransportUnitaire_HT) {
-                    setErrors(prev => ({
-                      ...prev,
-                      prixTransportUnitaire_HT: ''
-                    }));
-                  }
-                }}
-              />
-              <span>Inclure le transport</span>
-            </label>
+                  return (
+                    <tr key={row.id}>
+                      <td>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={row.nombreCiternes}
+                          onChange={(e) => updateCiterneRow(row.id, 'nombreCiternes', e.target.value)}
+                          required
+                        />
+                      </td>
+                      <td>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="500"
+                          step="0.01"
+                          value={row.volumeParCiterne}
+                          onChange={(e) => updateCiterneRow(row.id, 'volumeParCiterne', e.target.value)}
+                          required
+                        />
+                      </td>
+                      <td>{totalVolume} m³</td>
+                      <td>
+                        <div className="transport-checkbox-cell">
+                          <input
+                            type="checkbox"
+                            checked={row.inclureTransport}
+                            onChange={() => toggleTransportCiterne(row.id)}
+                          />
+                        </div>
+                      </td>
+                      <td>
+                        <button 
+                          type="button" 
+                          className="remove-row-btn"
+                          onClick={() => removeCiterneRow(row.id)}
+                          disabled={citerneRows.length <= 1}
+                        >
+                          ×
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            
+            <button type="button" className="add-row-btn" onClick={addCiterneRow}>
+              + Ajouter une ligne
+            </button>
           </div>
 
-          {formData.inclureTransport && (
-            <>
-              <Input
-                label="Prix Transport Unitaire HT (DZD)"
-                type="number"
-                name="prixTransportUnitaire_HT"
-                value={formData.prixTransportUnitaire_HT}
-                onChange={handleChange}
-                min="0"
-                step="0.01"
-              />
 
-              <Input
-                label="Taux TVA Transport (%)"
-                type="number"
-                name="tauxTVA_Transport"
-                value={formData.tauxTVA_Transport}
-                onChange={handleChange}
-                min="0"
-                max="100"
-                step="0.01"
-              />
-            </>
-          )}
         </div>
-      </div>
+      )}
 
-      <div className="form-section">
-        <div className="section-header">
-          <h3 className="section-title">Calcul du Devis</h3>
+      {formData.typeDossier && (
+        <div className="form-section">
+          <div className="section-header">
+            <h3 className="section-title">Calcul du Devis</h3>
+          </div>
+          <div className="totals-grid">
+            <div className="total-item">
+              <span className="total-label">Volume Total:</span>
+              <span className="total-value">{totals.volumeTotal.toFixed(2)} m³</span>
+            </div>
+            <div className="total-item highlight">
+              <span className="total-label">Total Eau HT:</span>
+              <span className="total-value">{totals.totalEauHT.toFixed(2)} DZD</span>
+            </div>
+            <div className="total-item">
+              <span className="total-label">TVA Eau:</span>
+              <span className="total-value">{totals.totalEauTVA.toFixed(2)} DZD</span>
+            </div>
+            <div className="total-item highlight">
+              <span className="total-label">Total Eau TTC:</span>
+              <span className="total-value">{totals.totalEauTTC.toFixed(2)} DZD</span>
+            </div>
+            <div className="total-item">
+              <span className="total-label">Total Transport HT:</span>
+              <span className="total-value">{totals.totalTransportHT.toFixed(2)} DZD</span>
+            </div>
+            <div className="total-item">
+              <span className="total-label">TVA Transport:</span>
+              <span className="total-value">{totals.totalTransportTVA.toFixed(2)} DZD</span>
+            </div>
+            <div className="total-item highlight">
+              <span className="total-label">Total Transport TTC:</span>
+              <span className="total-value">{totals.totalTransportTTC.toFixed(2)} DZD</span>
+            </div>
+            <div className="total-item grand-total">
+              <span className="total-label">TOTAL GÉNÉRAL TTC:</span>
+              <span className="total-value">{totals.totalTTC.toFixed(2)} DZD</span>
+            </div>
+            <div className="total-item grand-total-words">
+              <span className="total-label">Ce devis est arrêté à la somme de :</span>
+              <span className="total-words">{amountToWords(totals.totalTTC)}</span>
+            </div>
+          </div>
         </div>
-        <div className="totals-grid">
-          <div className="total-item">
-            <span className="total-label">Volume Total:</span>
-            <span className="total-value">{totals.volumeTotal.toFixed(2)} m³</span>
-          </div>
-          <div className="total-item highlight">
-            <span className="total-label">Total Eau HT:</span>
-            <span className="total-value">{totals.totalEauHT.toFixed(2)} DZD</span>
-          </div>
-          <div className="total-item">
-            <span className="total-label">TVA Eau:</span>
-            <span className="total-value">{totals.totalEauTVA.toFixed(2)} DZD</span>
-          </div>
-          <div className="total-item highlight">
-            <span className="total-label">Total Eau TTC:</span>
-            <span className="total-value">{totals.totalEauTTC.toFixed(2)} DZD</span>
-          </div>
-          <div className="total-item">
-            <span className="total-label">Total Transport HT:</span>
-            <span className="total-value">{totals.totalTransportHT.toFixed(2)} DZD</span>
-          </div>
-          <div className="total-item">
-            <span className="total-label">TVA Transport:</span>
-            <span className="total-value">{totals.totalTransportTVA.toFixed(2)} DZD</span>
-          </div>
-          <div className="total-item highlight">
-            <span className="total-label">Total Transport TTC:</span>
-            <span className="total-value">{totals.totalTransportTTC.toFixed(2)} DZD</span>
-          </div>
-          <div className="total-item grand-total">
-            <span className="total-label">TOTAL GÉNÉRAL TTC:</span>
-            <span className="total-value">{totals.totalTTC.toFixed(2)} DZD</span>
-          </div>
-          <div className="total-item grand-total-words">
-            <span className="total-label">Ce devis est arrêté à la somme de :</span>
-            <span className="total-words">{amountToWords(totals.totalTTC)}</span>
-          </div>
-        </div>
-      </div>
+      )}
 
-      <div className="form-section">
-        <div className="section-header">
-          <h3 className="section-title">Notes (Optionnel)</h3>
+      {formData.typeDossier && (
+        <div className="form-section">
+          <div className="section-header">
+            <h3 className="section-title">Notes (Optionnel)</h3>
+          </div>
+          <textarea
+            className="notes-textarea"
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            placeholder="Ajouter des notes ou commentaires..."
+            rows="4"
+          />
         </div>
-        <textarea
-          className="notes-textarea"
-          name="notes"
-          value={formData.notes}
-          onChange={handleChange}
-          placeholder="Ajouter des notes ou commentaires..."
-          rows="4"
-        />
-      </div>
+      )}
 
-      <div className="form-actions">
-        <Button type="button" variant="ghost" onClick={handleCancel}>
-          Annuler
-        </Button>
-        <Button type="submit" variant="primary">
-          Créer le Devis
-        </Button>
-      </div>
+
     </form>
   );
 };

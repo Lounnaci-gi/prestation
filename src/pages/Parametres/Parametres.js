@@ -17,7 +17,7 @@ const Parametres = () => {
     dateDebut: new Date().toISOString().split('T')[0]
   });
 
-  // Remplacer automatiquement "VENTE" par "CITERNAGE" dans les options
+  // Options de type de prestation
   const typePrestationOptions = [
     { value: 'CITERNAGE', label: 'Citernage' },
     { value: 'TRANSPORT', label: 'Transport' },
@@ -26,7 +26,12 @@ const Parametres = () => {
   ];
 
   const [editingId, setEditingId] = useState(null);
-  const [editData, setEditData] = useState({});
+  const [editData, setEditData] = useState({
+    prixHT: '',
+    tauxTVA: '19',
+    volumeReference: '',
+    dateDebut: ''
+  });
 
   // Charger les données depuis la base de données
   useEffect(() => {
@@ -174,9 +179,12 @@ const Parametres = () => {
           );
           
           if (modifyResult.isConfirmed) {
+            // Conversion du type de prestation
+            const typePrestationDB = newTarif.typePrestation.trim().toUpperCase() === 'CITERNAGE' ? 'CITERNAGE' : newTarif.typePrestation.trim();
+            
             // Modifier le tarif existant
             const tarifToUpdate = {
-              TypePrestation: newTarif.typePrestation.trim(),
+              TypePrestation: typePrestationDB,
               PrixHT: parseFloat(newTarif.prixHT),
               TauxTVA: parseFloat(newTarif.tauxTVA) > 1 ? parseFloat(newTarif.tauxTVA) / 100 : parseFloat(newTarif.tauxTVA),
               VolumeReference: newTarif.volumeReference ? parseInt(newTarif.volumeReference) : null,
@@ -234,22 +242,35 @@ const Parametres = () => {
 
   const handleEdit = (tarif) => {
     setEditingId(tarif.id);
+    
+    // Formater la date pour l'affichage dans l'input
+    const formattedDate = typeof tarif.dateDebut === 'string' 
+      ? tarif.dateDebut.split('T')[0]
+      : new Date(tarif.dateDebut).toISOString().split('T')[0];
+    
     setEditData({
       prixHT: tarif.prixHT,
       tauxTVA: tarif.tauxTVA * 100,
-      volumeReference: tarif.volumeReference
+      volumeReference: tarif.volumeReference || '',
+      dateDebut: formattedDate
     });
   };
 
   const handleSaveEdit = async () => {
     try {
+      // Obtenir le type de prestation original
+      const originalTypePrestation = tarifs.find(t => t.id === editingId)?.typePrestation;
+      
+      // Conversion du type de prestation
+      const typePrestationDB = originalTypePrestation === 'CITERNAGE' ? 'CITERNAGE' : originalTypePrestation;
+      
       // Préparer les données conformément à la structure de la table Tarifs_Historique
       const tarifToUpdate = {
-        TypePrestation: tarifs.find(t => t.id === editingId)?.typePrestation,
+        TypePrestation: typePrestationDB,
         PrixHT: parseFloat(editData.prixHT),
         TauxTVA: parseFloat(editData.tauxTVA) > 1 ? parseFloat(editData.tauxTVA) / 100 : parseFloat(editData.tauxTVA),
         VolumeReference: editData.volumeReference ? parseInt(editData.volumeReference) : null,
-        DateDebut: tarifs.find(t => t.id === editingId)?.dateDebut
+        DateDebut: editData.dateDebut
       };
       
       // Mettre à jour dans la base de données
@@ -466,6 +487,12 @@ const Parametres = () => {
                               onChange={(e) => setEditData({...editData, volumeReference: e.target.value})}
                               step="1"
                               disabled={tarifs.find(t => t.id === editingId)?.typePrestation !== 'TRANSPORT'}
+                            />
+                            <input
+                              type="date"
+                              className="setting-input small-input"
+                              value={editData.dateDebut || ''}
+                              onChange={(e) => setEditData({...editData, dateDebut: e.target.value})}
                             />
                             <button className="btn btn-primary" onClick={handleSaveEdit}>Sauver</button>
                           </>
