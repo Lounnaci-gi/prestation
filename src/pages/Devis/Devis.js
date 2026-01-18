@@ -4,13 +4,14 @@ import Button from '../../components/Button';
 import Table from '../../components/Table';
 import DevisForm from '../../components/DevisForm';
 import AlertService from '../../utils/alertService';
-import { createDevis, getAllDevis } from '../../api/devisApi';
+import { createDevis, getAllDevis, updateDevis } from '../../api/devisApi';
 import './Devis.css';
 
 const Devis = () => {
   const [showForm, setShowForm] = useState(false);
   const [devisList, setDevisList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingDevis, setEditingDevis] = useState(null);
 
   const handleCreateDevis = async (devisData) => {
     try {
@@ -34,6 +35,7 @@ const Devis = () => {
       
       setDevisList([newDevis, ...devisList]);
       setShowForm(false);
+      setEditingDevis(null);
       
       // Show success message
       await AlertService.success('Devis créé', 'Le devis a été créé avec succès dans la base de données!');
@@ -41,6 +43,31 @@ const Devis = () => {
       console.error('Erreur lors de la création du devis:', error);
       console.error('Détails de l\'erreur:', error);
       await AlertService.error('Erreur', error.error || 'Une erreur est survenue lors de la création du devis');
+    }
+  };
+  
+  const handleUpdateDevis = async (devisData) => {
+    try {
+      console.log('Données envoyées au backend pour mise à jour:', devisData);
+      // Appeler l'API pour mettre à jour le devis
+      // Extraire l'ID du devis à partir des données originales ou des nouvelles données
+      const devisId = editingDevis.DevisID || editingDevis.id;
+      const result = await updateDevis(devisId, devisData);
+      
+      console.log('Réponse du backend:', result);
+      
+      // Rafraîchir la liste des devis
+      await loadDevis();
+      
+      setShowForm(false);
+      setEditingDevis(null);
+      
+      // Show success message
+      await AlertService.success('Devis mis à jour', 'Le devis a été mis à jour avec succès dans la base de données!');
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du devis:', error);
+      console.error('Détails de l\'erreur:', error);
+      await AlertService.error('Erreur', error.error || 'Une erreur est survenue lors de la mise à jour du devis');
     }
   };
 
@@ -73,6 +100,53 @@ const Devis = () => {
     loadDevis();
   }, []);
 
+  const handleEditDevis = async (devis) => {
+    try {
+      console.log('Données reçues pour édition:', devis); // Pour déboguer
+      
+      // Vérifier que l'argument n'est pas undefined
+      if (!devis) {
+        await AlertService.error('Erreur', 'Données du devis non disponibles pour l\'édition');
+        return;
+      }
+      
+      // Charger les données complètes du devis à partir de l'API
+      const allDevis = await getAllDevis();
+      
+      // Trouver le devis correspondant en utilisant les informations disponibles
+      let fullDevis = null;
+      
+      // Essayer de trouver le devis en utilisant l'ID s'il est disponible
+      if (devis.id) {
+        fullDevis = allDevis.find(d => d.DevisID == devis.id);
+      }
+      
+      // Si pas trouvé par ID, essayer par code
+      if (!fullDevis && devis.code) {
+        fullDevis = allDevis.find(d => d.CodeDevis == devis.code);
+      }
+      
+      // Si toujours pas trouvé, essayer de trouver par correspondance avec les données du tableau
+      if (!fullDevis) {
+        fullDevis = allDevis.find(d => 
+          d.CodeDevis == devis.code || 
+          d.NomRaisonSociale == devis.client ||
+          (d.DateVente && new Date(d.DateVente).toISOString().split('T')[0] == devis.date)
+        );
+      }
+      
+      if (fullDevis) {
+        setEditingDevis(fullDevis);
+        setShowForm(true);
+      } else {
+        await AlertService.error('Erreur', 'Impossible de charger les détails du devis');
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement du devis pour édition:', error);
+      await AlertService.error('Erreur', 'Impossible de charger les détails du devis');
+    }
+  };
+  
   const handleCancel = async () => {
     const result = await AlertService.confirm(
       'Annuler la création',
@@ -83,6 +157,7 @@ const Devis = () => {
     
     if (result.isConfirmed) {
       setShowForm(false);
+      setEditingDevis(null);
       // Recharger les devis pour s'assurer qu'ils sont à jour
       await loadDevis();
     }
@@ -106,7 +181,7 @@ const Devis = () => {
       header: 'Actions',
       key: 'actions',
       align: 'center',
-      render: () => (
+      render: (_, fullRow) => (
         <div className="action-icons">
           <button className="icon-btn view-btn" title="Voir">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -114,7 +189,11 @@ const Devis = () => {
               <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
-          <button className="icon-btn edit-btn" title="Modifier">
+          <button 
+            className="icon-btn edit-btn" 
+            title="Modifier"
+            onClick={() => handleEditDevis(fullRow)}
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -148,15 +227,19 @@ const Devis = () => {
           <p className="page-subtitle">Devis quantitatifs et estimatifs</p>
         </div>
         {!showForm && (
-          <Button variant="primary" onClick={() => setShowForm(true)}>+ Nouveau Devis</Button>
+          <Button variant="primary" onClick={() => {
+            setEditingDevis(null);
+            setShowForm(true);
+          }}>+ Nouveau Devis</Button>
         )}
       </div>
 
       {showForm ? (
         <Card>
           <DevisForm 
-            onSubmit={handleCreateDevis}
+            onSubmit={editingDevis ? handleUpdateDevis : handleCreateDevis}
             onCancel={handleCancel}
+            initialData={editingDevis}
           />
         </Card>
       ) : (

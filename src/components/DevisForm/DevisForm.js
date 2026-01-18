@@ -9,7 +9,7 @@ import { getAllClients } from '../../api/clientsApi';
 import { amountToWords } from '../../utils/numberToWords';
 import './DevisForm.css';
 
-const DevisForm = ({ onSubmit, onCancel }) => {
+const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
   const [formData, setFormData] = useState({
     clientId: '',
     // Client info fields
@@ -29,6 +29,8 @@ const DevisForm = ({ onSubmit, onCancel }) => {
     statut: 'EN ATTENTE',
     notes: '',
   });
+  
+  const [isInitializing, setIsInitializing] = useState(false);
 
   const [citerneRows, setCiterneRows] = useState([
     { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }
@@ -36,6 +38,118 @@ const DevisForm = ({ onSubmit, onCancel }) => {
 
   const [clients, setClients] = useState([]);
   const [loadingClients, setLoadingClients] = useState(true);
+
+  // Charger les données initiales si en mode édition
+  useEffect(() => {
+    if (initialData) {
+      setIsInitializing(true);
+      
+      // Charger les données principales du devis
+      // Gérer les différents formats de données (du tableau ou de l'API)
+      const isApiFormat = initialData.VenteID !== undefined || initialData.DevisID !== undefined;
+      
+      if (isApiFormat) {
+        // Format provenant de l'API - mapper les champs appropriés
+        setFormData({
+          clientId: initialData.VenteID && initialData.ClientID ? initialData.ClientID.toString() : '',
+          codeClient: initialData.NomRaisonSociale ? initialData.CodeClient || '' : '',
+          nomRaisonSociale: initialData.NomRaisonSociale || '',
+          adresse: initialData.Adresse || '',
+          telephone: initialData.Telephone || '',
+          email: initialData.Email || '',
+          typeDossier: initialData.TypeDossier || initialData.type || '',
+          prixUnitaireM3_HT: initialData.PrixUnitaireM3_HT || initialData.prixUnitaireM3 || '',
+          tauxTVA_Eau: (initialData.TauxTVA_Eau !== undefined ? (initialData.TauxTVA_Eau * 100).toString() : initialData.tauxTVA_Eau || initialData.tauxTVA || '19'),
+          inclureTransport: initialData.inclureTransport || false,
+          prixTransportUnitaire_HT: initialData.PrixTransportUnitaire_HT || initialData.prixTransportUnitaire_HT || initialData.prixTransport || '0',
+          tauxTVA_Transport: (initialData.TauxTVA_Transport !== undefined ? (initialData.TauxTVA_Transport * 100).toString() : initialData.tauxTVA_Transport || '19'),
+          dateDevis: initialData.DateVente ? new Date(initialData.DateVente).toISOString().split('T')[0] : initialData.dateDevis || new Date().toISOString().split('T')[0],
+          statut: initialData.Statut || initialData.statut || 'EN ATTENTE',
+          notes: initialData.Notes || initialData.notes || '',
+        });
+        
+        // Charger les lignes de citernes si disponibles
+        if (initialData.LignesVentes && initialData.LignesVentes.length > 0) {
+          // Format de l'API
+          const lignes = initialData.LignesVentes.map(ligne => ({
+            id: ligne.LigneVenteID || Date.now(),
+            nombreCiternes: ligne.NombreCiternes?.toString() || '1',
+            volumeParCiterne: ligne.VolumeParCiterne?.toString() || '',
+            inclureTransport: ligne.InclureTransport || false
+          }));
+          setCiterneRows(lignes);
+        } else {
+          // Si aucune ligne trouvée, conserver une ligne vide
+          setCiterneRows([
+            { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }
+          ]);
+        }
+      } else {
+        // Ancien format (du tableau ou d'autres sources)
+        setFormData({
+          clientId: initialData.clientId || initialData.id || '',
+          codeClient: initialData.codeClient || initialData.code || '',
+          nomRaisonSociale: initialData.nomRaisonSociale || initialData.client || '',
+          adresse: initialData.adresse || '',
+          telephone: initialData.telephone || '',
+          email: initialData.email || '',
+          typeDossier: initialData.typeDossier || initialData.type || '',
+          prixUnitaireM3_HT: initialData.prixUnitaireM3_HT || initialData.prixUnitaireM3 || '',
+          tauxTVA_Eau: initialData.tauxTVA_Eau || initialData.tauxTVA || '19',
+          inclureTransport: initialData.inclureTransport || false,
+          prixTransportUnitaire_HT: initialData.prixTransportUnitaire_HT || initialData.prixTransport || '0',
+          tauxTVA_Transport: initialData.tauxTVA_Transport || '19',
+          dateDevis: initialData.dateDevis || initialData.date || new Date().toISOString().split('T')[0],
+          statut: initialData.statut || 'EN ATTENTE',
+          notes: initialData.notes || '',
+        });
+        
+        // Charger les lignes de citernes si disponibles
+        if (initialData.citerneRows && initialData.citerneRows.length > 0) {
+          setCiterneRows(initialData.citerneRows);
+        } else if (initialData.lignesVentes && initialData.lignesVentes.length > 0) {
+          // Si les données viennent d'un devis existant avec lignes de ventes
+          const lignes = initialData.lignesVentes.map(ligne => ({
+            id: ligne.id || Date.now(),
+            nombreCiternes: ligne.nombreCiternes || '1',
+            volumeParCiterne: ligne.volumeParCiterne || '',
+            inclureTransport: ligne.inclureTransport || false
+          }));
+          setCiterneRows(lignes);
+        } else {
+          // Si aucune donnée de ligne trouvée, conserver une ligne vide
+          setCiterneRows([
+            { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }
+          ]);
+        }
+      }
+      
+      // Désactiver le mode d'initialisation après un court délai pour permettre le rendu
+      setTimeout(() => setIsInitializing(false), 0);
+    } else {
+      // Réinitialiser les données si pas en mode édition
+      setFormData({
+        clientId: '',
+        codeClient: '',
+        nomRaisonSociale: '',
+        adresse: '',
+        telephone: '',
+        email: '',
+        typeDossier: '',
+        prixUnitaireM3_HT: '',
+        tauxTVA_Eau: '19',
+        inclureTransport: false,
+        prixTransportUnitaire_HT: '0',
+        tauxTVA_Transport: '19',
+        dateDevis: new Date().toISOString().split('T')[0],
+        statut: 'EN ATTENTE',
+        notes: '',
+      });
+      setCiterneRows([
+        { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }
+      ]);
+    }
+  }, [initialData]);
 
   const addCiterneRow = () => {
     setCiterneRows([...citerneRows, { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }]);
@@ -96,7 +210,7 @@ const DevisForm = ({ onSubmit, onCancel }) => {
 
   // Mettre à jour automatiquement le prix unitaire et la TVA quand le type de devis change
   useEffect(() => {
-    if (formData.typeDossier) {
+    if (formData.typeDossier && !isInitializing) {
       // Convertir le type de devis en type de prestation correspondant
       let typePrestation = '';
       switch (formData.typeDossier) {
@@ -138,11 +252,11 @@ const DevisForm = ({ onSubmit, onCancel }) => {
         }
       }
     }
-  }, [formData.typeDossier, tarifs]);
+  }, [formData.typeDossier, tarifs, isInitializing]);
 
   // Mettre à jour automatiquement le prix de transport quand le volume change
   useEffect(() => {
-    if (formData.volumeParCiterne && tarifs.length > 0) {
+    if (formData.volumeParCiterne && tarifs.length > 0 && !isInitializing) {
       const nouveauPrixTransport = getPrixTransportSelonVolume(parseFloat(formData.volumeParCiterne) || 0);
       if (nouveauPrixTransport !== parseFloat(formData.prixTransportUnitaire_HT)) {
         setFormData(prev => ({
@@ -151,7 +265,7 @@ const DevisForm = ({ onSubmit, onCancel }) => {
         }));
       }
     }
-  }, [formData.volumeParCiterne, tarifs]);
+  }, [formData.volumeParCiterne, tarifs, isInitializing]);
 
   // Charger les clients depuis la base de données
   const loadClients = async () => {
