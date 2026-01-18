@@ -21,6 +21,7 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-container">
         <div className="navbar-brand">
+          <img src="/ade.png" alt="Logo" className="brand-logo" />
           <span className="brand-name">Gestion Eau</span>
         </div>
 

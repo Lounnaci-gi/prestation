@@ -940,6 +940,54 @@ app.post('/api/devis', async (req, res) => {
   }
 });
 
+// Endpoint pour récupérer tous les devis
+app.get('/api/devis', async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        d.DevisID,
+        d.CodeDevis,
+        d.Statut,
+        d.DateCreation,
+        d.DateModification,
+        v.TypeDossier,
+        v.DateVente,
+        c.NomRaisonSociale,
+        c.Adresse,
+        c.Telephone,
+        c.Email,
+        SUM(lv.NombreCiternes * lv.VolumeParCiterne) as VolumeTotal,
+        SUM((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT)) as TotalEauHT,
+        SUM(((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) * lv.TauxTVA_Eau)) as TotalEauTVA,
+        SUM((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) + ((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) * lv.TauxTVA_Eau)) as TotalEauTTC,
+        SUM(lv.NombreCiternes * lv.PrixTransportUnitaire_HT) as TotalTransportHT,
+        SUM((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) * lv.TauxTVA_Transport) as TotalTransportTVA,
+        SUM((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) + ((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) * lv.TauxTVA_Transport)) as TotalTransportTTC,
+        SUM((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) + (lv.NombreCiternes * lv.PrixTransportUnitaire_HT)) as TotalHT,
+        SUM(((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) * lv.TauxTVA_Eau) + ((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) * lv.TauxTVA_Transport)) as TotalTVA,
+        SUM((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) + ((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) * lv.TauxTVA_Eau) + (lv.NombreCiternes * lv.PrixTransportUnitaire_HT) + ((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) * lv.TauxTVA_Transport)) as TotalTTC
+      FROM Devis d
+      JOIN Ventes v ON d.VenteID = v.VenteID
+      JOIN Clients c ON v.ClientID = c.ClientID
+      LEFT JOIN LignesVentes lv ON v.VenteID = lv.VenteID
+      GROUP BY d.DevisID, d.CodeDevis, d.Statut, d.DateCreation, d.DateModification, v.TypeDossier, v.DateVente, c.NomRaisonSociale, c.Adresse, c.Telephone, c.Email
+      ORDER BY d.DateCreation DESC
+    `;
+    
+    const results = await new Promise((resolve, reject) => {
+      executeQuery(query, [], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+    
+    res.json(results || []);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des devis:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la récupération des devis', details: error.message });
+  }
+});
+
 // Endpoint de test pour vérérifier que le serveur fonctionne
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Serveur backend fonctionnel', timestamp: new Date() });

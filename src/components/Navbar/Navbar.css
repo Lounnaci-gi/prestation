@@ -31,6 +31,12 @@
   font-size: 1.25rem;
 }
 
+.brand-logo {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+}
+
 .brand-name {
   font-weight: 700;
 }
