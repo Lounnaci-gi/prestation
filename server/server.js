@@ -940,6 +940,76 @@ app.post('/api/devis', async (req, res) => {
   }
 });
 
+// Endpoint pour récupérer un devis spécifique par ID
+app.get('/api/devis/:id', async (req, res) => {
+  const devisId = req.params.id;
+  
+  try {
+    const query = `
+      SELECT 
+        d.DevisID,
+        d.CodeDevis,
+        d.Statut,
+        d.DateCreation,
+        d.DateModification,
+        v.VenteID,
+        v.ClientID,
+        v.TypeDossier,
+        v.DateVente,
+        c.NomRaisonSociale,
+        c.CodeClient,
+        c.Adresse,
+        c.Telephone,
+        c.Email,
+        (SELECT '[' + STUFF((
+          SELECT ',' + '{"NombreCiternes":' + ISNULL(CAST(lv2.NombreCiternes AS VARCHAR), 'null') + ',' +
+          '"VolumeParCiterne":' + ISNULL(CAST(lv2.VolumeParCiterne AS VARCHAR), 'null') + ',' +
+          '"PrixUnitaireM3_HT":' + ISNULL(CAST(lv2.PrixUnitaireM3_HT AS VARCHAR), 'null') + ',' +
+          '"TauxTVA_Eau":' + ISNULL(CAST(lv2.TauxTVA_Eau AS VARCHAR), 'null') + ',' +
+          '"PrixTransportUnitaire_HT":' + ISNULL(CAST(lv2.PrixTransportUnitaire_HT AS VARCHAR), 'null') + ',' +
+          '"TauxTVA_Transport":' + ISNULL(CAST(lv2.TauxTVA_Transport AS VARCHAR), 'null') + '}'
+          FROM LignesVentes lv2
+          WHERE lv2.VenteID = v.VenteID
+          FOR XML PATH('')
+        ), 1, 1, '') + ']'
+        FROM LignesVentes lv
+        WHERE lv.VenteID = v.VenteID) AS LignesVentes
+      FROM Devis d
+      JOIN Ventes v ON d.VenteID = v.VenteID
+      JOIN Clients c ON v.ClientID = c.ClientID
+      WHERE d.DevisID = @devisId
+    `;
+    
+    const params = [
+      { name: 'devisId', type: 'int', value: parseInt(devisId) }
+    ];
+    
+    const results = await new Promise((resolve, reject) => {
+      executeQuery(query, params, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+    
+    if (results && results.length > 0) {
+      // Parser le JSON des lignes de ventes
+      const devis = results[0];
+      try {
+        devis.LignesVentes = JSON.parse(devis.LignesVentes) || [];
+      } catch (e) {
+        devis.LignesVentes = [];
+      }
+      
+      res.json(devis);
+    } else {
+      res.status(404).json({ error: 'Devis non trouvé' });
+    }
+  } catch (error) {
+    console.error('Erreur lors de la récupération du devis:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la récupération du devis', details: error.message });
+  }
+});
+
 // Endpoint pour récupérer tous les devis
 app.get('/api/devis', async (req, res) => {
   try {

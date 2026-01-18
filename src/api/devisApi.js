@@ -50,6 +50,19 @@ export const updateDevis = async (id, devisData) => {
 };
 
 /**
+ * Récupère un devis spécifique par son ID
+ */
+export const getDevisById = async (id) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/devis/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Erreur lors de la récupération du devis:', error);
+    throw error.response?.data || { error: 'Erreur serveur lors de la récupération du devis' };
+  }
+};
+
+/**
  * Supprime un devis
  */
 export const deleteDevis = async (id) => {

@@ -4,7 +4,7 @@ import Button from '../../components/Button';
 import Table from '../../components/Table';
 import DevisForm from '../../components/DevisForm';
 import AlertService from '../../utils/alertService';
-import { createDevis, getAllDevis, updateDevis } from '../../api/devisApi';
+import { createDevis, getAllDevis, updateDevis, getDevisById } from '../../api/devisApi';
 import './Devis.css';
 
 const Devis = () => {
@@ -110,30 +110,15 @@ const Devis = () => {
         return;
       }
       
-      // Charger les données complètes du devis à partir de l'API
-      const allDevis = await getAllDevis();
+      // Charger directement les détails du devis à partir de l'API
+      const devisId = devis.id || devis.DevisID;
       
-      // Trouver le devis correspondant en utilisant les informations disponibles
-      let fullDevis = null;
-      
-      // Essayer de trouver le devis en utilisant l'ID s'il est disponible
-      if (devis.id) {
-        fullDevis = allDevis.find(d => d.DevisID == devis.id);
+      if (!devisId) {
+        await AlertService.error('Erreur', 'ID du devis non disponible pour l\'édition');
+        return;
       }
       
-      // Si pas trouvé par ID, essayer par code
-      if (!fullDevis && devis.code) {
-        fullDevis = allDevis.find(d => d.CodeDevis == devis.code);
-      }
-      
-      // Si toujours pas trouvé, essayer de trouver par correspondance avec les données du tableau
-      if (!fullDevis) {
-        fullDevis = allDevis.find(d => 
-          d.CodeDevis == devis.code || 
-          d.NomRaisonSociale == devis.client ||
-          (d.DateVente && new Date(d.DateVente).toISOString().split('T')[0] == devis.date)
-        );
-      }
+      const fullDevis = await getDevisById(devisId);
       
       if (fullDevis) {
         setEditingDevis(fullDevis);
