@@ -954,7 +954,12 @@ app.get('/api/devis/:id', async (req, res) => {
         d.DateModification,
         v.VenteID,
         v.ClientID,
-        v.TypeDossier,
+        CASE 
+          WHEN v.TypeDossier = 'VENTE' THEN 'CITERNAGE'
+          WHEN v.TypeDossier = 'VOL' THEN 'PROCES_VOL'
+          WHEN v.TypeDossier = 'ESSAI' THEN 'ESSAI_RESEAU'
+          ELSE v.TypeDossier
+        END AS TypeDossier,
         v.DateVente,
         c.NomRaisonSociale,
         c.CodeClient,
