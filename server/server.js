@@ -47,6 +47,17 @@ connection.connect((err) => {
   }
 });
 
+// Attendre que la connexion soit vraiment établie
+connection.on('connect', (err) => {
+  if (err) {
+    console.error('Erreur de connexion:', err);
+    isConnected = false;
+  } else {
+    console.log('Connexion SQL Server établie');
+    isConnected = true;
+  }
+});
+
 // Gestion des erreurs de connexion
 connection.on('end', () => {
   console.log('Connexion à la base de données fermée');
@@ -60,8 +71,18 @@ connection.on('error', (err) => {
 
 // Fonction utilitaire pour exécuter des requêtes avec gestion d'erreurs
 const executeQuery = (query, params, callback) => {
-  if (!isConnected) {
-    callback(new Error('Connexion à la base de données non disponible'), null);
+  // Vérifier que la connexion est établie
+  if (!isConnected || (connection.state.name !== 'LoggedIn' && connection.state.name !== 'SentClientRequest')) {
+    console.error('Connexion SQL Server non prête. État actuel:', connection.state.name);
+    callback(new Error('Connexion à la base de données non disponible ou pas encore prête'), null);
+    return;
+  }
+
+  // Attendre un peu si la connexion est en cours d'utilisation
+  if (connection.state.name === 'SentClientRequest') {
+    setTimeout(() => {
+      executeQuery(query, params, callback);
+    }, 100);
     return;
   }
 
@@ -134,7 +155,13 @@ const executeQuery = (query, params, callback) => {
     callback(null, results);
   });
 
-  connection.execSql(request);
+  // Exécuter la requête seulement si la connexion est prête
+  try {
+    connection.execSql(request);
+  } catch (execError) {
+    console.error('Erreur lors de l\'exécution de execSql:', execError);
+    callback(execError, null);
+  }
 };
 
 // Endpoint pour récupérer tous les tarifs de la table Tarifs_Historique
@@ -636,25 +663,95 @@ app.post('/api/devis', async (req, res) => {
       return res.status(400).json({ error: 'Au moins une ligne de citerne est requise' });
     }
 
-    // Valider que le client existe
-    const clientCheckQuery = 'SELECT ClientID FROM Clients WHERE ClientID = @clientId';
-    const clientCheckParams = [
-      { name: 'clientId', type: 'int', value: parseInt(clientId) }
-    ];
+    let actualClientId = clientId;
+    // Si c'est un nouveau client, créer d'abord le client
+    if (clientId === 'new') {
+      // Valider les données du nouveau client
+      if (!codeClient || !nomRaisonSociale || !adresse) {
+        return res.status(400).json({ error: 'Code client, nom/raison sociale et adresse sont requis pour un nouveau client' });
+      }
+      
+      // Vérifier si le code client existe déjà
+      const checkQuery = 'SELECT ClientID FROM Clients WHERE CodeClient = @codeClient';
+      const checkParams = [
+        { name: 'codeClient', type: 'varchar', value: codeClient }
+      ];
 
-    const clientResults = await new Promise((resolve, reject) => {
-      executeQuery(clientCheckQuery, clientCheckParams, (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
+      const existingClients = await new Promise((resolve, reject) => {
+        executeQuery(checkQuery, checkParams, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
       });
-    });
 
-    if (!clientResults || clientResults.length === 0) {
-      return res.status(404).json({ error: 'Client non trouvé' });
+      if (existingClients && existingClients.length > 0) {
+        return res.status(409).json({ error: 'Un client avec ce code existe déjà' });
+      }
+
+      // Insérer le nouveau client
+      const insertQuery = `INSERT INTO Clients (CodeClient, NomRaisonSociale, Adresse, Telephone, Email)
+        OUTPUT INSERTED.ClientID
+        VALUES (@codeClient, @nomRaisonSociale, @adresse, @telephone, @email)`;
+      
+      const insertParams = [
+        { name: 'codeClient', type: 'varchar', value: codeClient },
+        { name: 'nomRaisonSociale', type: 'nvarchar', value: nomRaisonSociale },
+        { name: 'adresse', type: 'nvarchar', value: adresse },
+        { name: 'telephone', type: 'varchar', value: telephone || null },
+        { name: 'email', type: 'varchar', value: email || null }
+      ];
+
+      const insertResult = await new Promise((resolve, reject) => {
+        executeQuery(insertQuery, insertParams, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+
+      if (!insertResult || insertResult.length === 0) {
+        return res.status(500).json({ error: 'Erreur lors de la création du client' });
+      }
+      
+      actualClientId = insertResult[0].ClientID;
+    } else {
+      // Valider que le client existe
+      const clientCheckQuery = 'SELECT ClientID FROM Clients WHERE ClientID = @clientId';
+      const clientCheckParams = [
+        { name: 'clientId', type: 'int', value: parseInt(actualClientId) }
+      ];
+
+      const clientResults = await new Promise((resolve, reject) => {
+        executeQuery(clientCheckQuery, clientCheckParams, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+
+      if (!clientResults || clientResults.length === 0) {
+        return res.status(404).json({ error: 'Client non trouvé' });
+      }
+      
+      actualClientId = parseInt(actualClientId);
     }
 
     // Générer le code devis
     const codeDevis = `DEV-${new Date(dateDevis).getFullYear()}-${Date.now().toString().slice(-6)}`;
+
+    // Convertir le type de dossier pour la vente (selon la logique du frontend)
+    let venteTypeDossier = typeDossier;
+    switch(typeDossier) {
+      case 'CITERNAGE':
+        venteTypeDossier = 'VENTE';
+        break;
+      case 'PROCES_VOL':
+        venteTypeDossier = 'VOL';
+        break;
+      case 'ESSAI_RESEAU':
+        venteTypeDossier = 'ESSAI';
+        break;
+      default:
+        venteTypeDossier = typeDossier;
+    }
 
     // Commencer une transaction - créer la vente d'abord
     const venteQuery = `
@@ -664,8 +761,8 @@ app.post('/api/devis', async (req, res) => {
     `;
     
     const venteParams = [
-      { name: 'clientId', type: 'int', value: parseInt(clientId) },
-      { name: 'typeDossier', type: 'varchar', value: typeDossier },
+      { name: 'clientId', type: 'int', value: parseInt(actualClientId) },
+      { name: 'typeDossier', type: 'varchar', value: venteTypeDossier },
       { name: 'dateVente', type: 'datetime', value: new Date(dateDevis) }
     ];
 
@@ -779,10 +876,10 @@ app.post('/api/devis', async (req, res) => {
         { name: 'venteId', type: 'int', value: venteId },
         { name: 'nombreCiternes', type: 'int', value: parseInt(nombreCiternes) || 1 },
         { name: 'volumeParCiterne', type: 'int', value: parseInt(volumeParCiterne) || 0 },
-        { name: 'prixUnitaireM3_HT', type: 'decimal', value: parseFloat(prixUnitaireM3_HT) || 0 },
-        { name: 'tauxTVA_Eau', type: 'decimal', value: parseFloat(tauxTVA_Eau) || 0 },
-        { name: 'prixTransportUnitaire_HT', type: 'decimal', value: parseFloat(prixTransport) || 0 },
-        { name: 'tauxTVA_Transport', type: 'decimal', value: parseFloat(tauxTVA_Transport) || 0 }
+        { name: 'prixUnitaireM3_HT', type: 'decimal', value: parseFloat(parseFloat(prixUnitaireM3_HT).toFixed(2)) || 0 },
+        { name: 'tauxTVA_Eau', type: 'decimal', value: parseFloat(parseFloat(tauxTVA_Eau > 10 ? tauxTVA_Eau / 100 : tauxTVA_Eau).toFixed(4)) || 0 },
+        { name: 'prixTransportUnitaire_HT', type: 'decimal', value: parseFloat(parseFloat(prixTransport).toFixed(2)) || 0 },
+        { name: 'tauxTVA_Transport', type: 'decimal', value: parseFloat(parseFloat(tauxTVA_Transport > 10 ? tauxTVA_Transport / 100 : tauxTVA_Transport).toFixed(4)) || 0 }
       ];
 
       await new Promise((resolve, reject) => {

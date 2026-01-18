@@ -265,6 +265,16 @@ const DevisForm = ({ onSubmit, onCancel }) => {
       }
       if (!formData.nomRaisonSociale) newErrors.nomRaisonSociale = 'Nom/Raison sociale requis';
       if (!formData.adresse) newErrors.adresse = 'Adresse requise';
+      
+      // Validation du téléphone
+      if (formData.telephone && formData.telephone.length > 10) {
+        newErrors.telephone = 'Le téléphone ne doit pas dépasser 10 caractères';
+      }
+      
+      // Validation de l'email
+      if (formData.email && formData.email.length > 60) {
+        newErrors.email = 'L\'email ne doit pas dépasser 60 caractères';
+      }
     }
 
     // Validation des citernes
@@ -604,6 +614,8 @@ const DevisForm = ({ onSubmit, onCancel }) => {
                 value={formData.telephone}
                 onChange={handleChange}
                 placeholder="0555123456"
+                maxLength="10"
+                error={errors.telephone}
               />
 
               <Input
@@ -613,6 +625,8 @@ const DevisForm = ({ onSubmit, onCancel }) => {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="contact@example.dz"
+                maxLength="60"
+                error={errors.email}
               />
             </div>
 
