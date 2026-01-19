@@ -30,7 +30,8 @@ CREATE TABLE Tarifs_Historique (
     PrixHT DECIMAL(18, 2) NOT NULL,
     TauxTVA DECIMAL(5, 4) NOT NULL,
     DateDebut DATETIME NOT NULL DEFAULT GETDATE(),
-    DateFin DATETIME NULL                -- NULL = Tarif en vigueur
+    DateFin DATETIME NULL,                -- NULL = Tarif en vigueur
+    Prefix NVARCHAR(2) NOT NULL
 );
 
 -- 3. TABLE DES VENTES / DOSSIERS

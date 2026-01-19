@@ -15,6 +15,11 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
   };
   
+  // Fonction utilitaire pour convertir null en chaîne vide
+  const nullToEmptyString = (value) => {
+    return value === null ? '' : (value || '');
+  };
+  
   const [formData, setFormData] = useState({
     clientId: '',
     // Client info fields
@@ -71,11 +76,11 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
       // Charger les données principales du devis
       setFormData({
         clientId: initialData.VenteID && initialData.ClientID ? initialData.ClientID.toString() : initialData.clientId || initialData.id || '',
-        codeClient: initialData.CodeClient || initialData.codeClient || initialData.code || '',
-        nomRaisonSociale: initialData.NomRaisonSociale || initialData.nomRaisonSociale || initialData.client || '',
-        adresse: initialData.Adresse || initialData.adresse || '',
-        telephone: initialData.Telephone || initialData.telephone || '',
-        email: initialData.Email || initialData.email || '',
+        codeClient: nullToEmptyString(initialData.CodeClient) || nullToEmptyString(initialData.codeClient) || initialData.code || '',
+        nomRaisonSociale: nullToEmptyString(initialData.NomRaisonSociale) || nullToEmptyString(initialData.nomRaisonSociale) || initialData.client || '',
+        adresse: nullToEmptyString(initialData.Adresse) || nullToEmptyString(initialData.adresse) || '',
+        telephone: nullToEmptyString(initialData.Telephone) || nullToEmptyString(initialData.telephone) || '',
+        email: nullToEmptyString(initialData.Email) || nullToEmptyString(initialData.email) || '',
         typeDossier: initialData.TypeDossier || initialData.typeDossier || initialData.type || '',
         prixUnitaireM3_HT: initialData.PrixUnitaireM3_HT || initialData.prixUnitaireM3_HT || initialData.prixUnitaireM3 || '',
         tauxTVA_Eau: (initialData.TauxTVA_Eau !== undefined ? (initialData.TauxTVA_Eau * 100).toString() : initialData.tauxTVA_Eau || initialData.tauxTVA_Eau || initialData.tauxTVA || '19'),
@@ -84,7 +89,7 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
         tauxTVA_Transport: (initialData.TauxTVA_Transport !== undefined ? (initialData.TauxTVA_Transport * 100).toString() : initialData.tauxTVA_Transport || '19'),
         dateDevis: initialData.DateVente ? new Date(initialData.DateVente).toISOString().split('T')[0] : initialData.dateDevis || initialData.date || new Date().toISOString().split('T')[0],
         statut: initialData.Statut || initialData.statut || 'EN ATTENTE',
-        notes: initialData.Notes || initialData.notes || '',
+        notes: nullToEmptyString(initialData.Notes) || nullToEmptyString(initialData.notes) || '',
       });
       
       // Charger les lignes de citernes si disponibles

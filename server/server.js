@@ -1324,6 +1324,82 @@ app.get('/api/devis/:id', async (req, res) => {
   }
 });
 
+// Endpoint pour supprimer un devis
+app.delete('/api/devis/:id', async (req, res) => {
+  const devisId = req.params.id;
+  
+  try {
+    // Validation de l'ID
+    if (isNaN(parseInt(devisId))) {
+      return res.status(400).json({ error: 'ID de devis invalide' });
+    }
+    
+    // D'abord supprimer les enregistrements dans la table Devis (si elle existe)
+    const deleteDevisRefQuery = `DELETE FROM Devis WHERE VenteID = @devisId`;
+    const deleteDevisRefParams = [
+      { name: 'devisId', type: 'int', value: parseInt(devisId) }
+    ];
+    
+    try {
+      await new Promise((resolve, reject) => {
+        executeQuery(deleteDevisRefQuery, deleteDevisRefParams, (err, results) => {
+          if (err) {
+            // Si la table Devis n'existe pas ou autre erreur, on continue
+            console.warn('Warning: Could not delete from Devis table:', err.message);
+            resolve();
+          } else {
+            resolve(results);
+          }
+        });
+      });
+    } catch (error) {
+      console.warn('Warning: Error handling Devis table:', error.message);
+    }
+    
+    // Ensuite supprimer les lignes de vente associées
+    const deleteLignesQuery = `DELETE FROM LignesVentes WHERE VenteID = @devisId`;
+    const deleteLignesParams = [
+      { name: 'devisId', type: 'int', value: parseInt(devisId) }
+    ];
+    
+    await new Promise((resolve, reject) => {
+      executeQuery(deleteLignesQuery, deleteLignesParams, (err, results) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(results);
+        }
+      });
+    });
+    
+    // Enfin supprimer le devis principal de la table Ventes
+    const deleteVentesQuery = `DELETE FROM Ventes WHERE VenteID = @devisId`;
+    const deleteVentesParams = [
+      { name: 'devisId', type: 'int', value: parseInt(devisId) }
+    ];
+    
+    const result = await new Promise((resolve, reject) => {
+      executeQuery(deleteVentesQuery, deleteVentesParams, (err, results) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(results);
+        }
+      });
+    });
+    
+    // Vérifier si le devis existait
+    if (result.rowsAffected && result.rowsAffected[0] > 0) {
+      res.json({ success: true, message: 'Devis supprimé avec succès' });
+    } else {
+      res.status(404).json({ error: 'Devis non trouvé' });
+    }
+  } catch (error) {
+    console.error('Erreur lors de la suppression du devis:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la suppression du devis', details: error.message });
+  }
+});
+
 // Endpoint pour récupérer tous les devis
 app.get('/api/devis', async (req, res) => {
   try {

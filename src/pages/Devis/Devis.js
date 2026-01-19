@@ -4,7 +4,7 @@ import Button from '../../components/Button';
 import Table from '../../components/Table';
 import DevisForm from '../../components/DevisForm';
 import AlertService from '../../utils/alertService';
-import { createDevis, getAllDevis, updateDevis, getDevisById } from '../../api/devisApi';
+import { createDevis, getAllDevis, updateDevis, getDevisById, deleteDevis } from '../../api/devisApi';
 import './Devis.css';
 
 const Devis = () => {
@@ -140,6 +140,50 @@ const Devis = () => {
     await loadDevis();
   };
 
+  const handleDeleteDevis = async (devis) => {
+    // Afficher la confirmation de suppression
+    const confirmed = await AlertService.confirm(
+      'Confirmation de suppression',
+      `Êtes-vous sûr de vouloir supprimer le devis ${devis.code} ?`
+    );
+    
+    if (!confirmed) {
+      return; // Annuler si l'utilisateur clique sur "Annuler"
+    }
+    
+    try {
+      // Procéder à la suppression
+      const devisId = devis.id || devis.DevisID;
+      await deleteDevis(devisId);
+      
+      // Afficher le message de succès
+      await AlertService.success('Devis supprimé', 'Le devis a été supprimé avec succès');
+    } catch (error) {
+      // Log l'erreur pour débogage
+      console.log('Status:', error.response?.status);
+      console.log('Data:', error.response?.data);
+      console.log('Error message:', error.message);
+      console.log('Full error:', error);
+      
+      // Si le devis est déjà supprimé, on reçoit un objet avec error: 'Devis non trouvé'
+      // ou une erreur 404
+      if ((error.response && error.response.status === 404) || 
+          (typeof error === 'object' && error.error === 'Devis non trouvé') ||
+          (error.response && error.response.data && error.response.data.error === 'Devis non trouvé')) {
+        await AlertService.success('Devis supprimé', 'Le devis a déjà été supprimé');
+      } else {
+        // Pour les autres erreurs, afficher le message d'erreur
+        console.error('Erreur lors de la suppression du devis:', error);
+        const errorMessage = error.response?.data?.error || error.error || 'Une erreur est survenue lors de la suppression du devis';
+        await AlertService.error('Erreur', errorMessage);
+        return; // Ne pas recharger la liste en cas d'erreur
+      }
+    }
+    
+    // Recharger la liste des devis dans tous les cas (succès ou devis déjà supprimé)
+    await loadDevis();
+  };
+
   const columns = [
     { header: 'Code Devis', key: 'code' },
     { header: 'Client', key: 'client' },
@@ -176,7 +220,11 @@ const Devis = () => {
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
             </svg>
           </button>
-          <button className="icon-btn delete-btn" title="Supprimer">
+          <button 
+            className="icon-btn delete-btn" 
+            title="Supprimer"
+            onClick={() => handleDeleteDevis(fullRow)}
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="3,6 5,6 21,6" />
               <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6" />
