@@ -195,19 +195,43 @@ input[type="checkbox"]:checked + .toggle-switch .toggle-slider:before {
 
 .citerne-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0 0.1rem; /* Espace vertical entre les lignes */
   margin-bottom: 1rem;
   background-color: white;
   border-radius: 0.5rem;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0; /* Bordure extérieure du tableau */
+}
+
+.citerne-table th:nth-child(1),
+.citerne-table td:nth-child(1) {
+  /* Colonne Quantité */
+  width: 30%;
+}
+
+.citerne-table th:nth-child(2),
+.citerne-table td:nth-child(2) {
+  /* Colonne Volume par citerne */
+  width: 30%;
+}
+
+.citerne-table th:nth-child(3),
+.citerne-table td:nth-child(3) {
+  /* Colonne Total Volume */
+  width: 40%;
 }
 
 .citerne-table th,
 .citerne-table td {
-  padding: 0.5rem;
+  padding: 0 3rem; /* Augmentation du padding horizontal et vertical */
   text-align: left;
-  border-bottom: 1px solid #e2e8f0;
+}
+
+.citerne-table th:first-child,
+.citerne-table td:first-child {
+  border-left: none; /* Pas de bordure pour la première colonne */
 }
 
 .citerne-table th {
