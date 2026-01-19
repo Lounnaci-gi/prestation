@@ -29,7 +29,7 @@ const Devis = () => {
         code: result.CodeDevis,
         client: result.NomRaisonSociale,
         date: result.DateVente.split('T')[0],
-        montant: `${result.TotalTTC.toFixed(2)} DZD`,
+        montant: `${result.TotalTTC.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD`,
         statut: result.Statut,
       };
       
@@ -82,7 +82,7 @@ const Devis = () => {
         code: d.CodeDevis,
         client: d.NomRaisonSociale,
         date: d.DateVente ? new Date(d.DateVente).toISOString().split('T')[0] : '',
-        montant: `${d.TotalTTC?.toFixed(2) || '0.00'} DZD`,
+        montant: `${d.TotalTTC?.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} DZD`,
         statut: d.Statut,
       }));
       

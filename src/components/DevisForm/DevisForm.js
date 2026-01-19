@@ -817,7 +817,7 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
                                         formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
                                         formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
                         const tarif = tarifType ? getTarifByType(tarifType) : null;
-                        return tarif ? `${tarif.PrixHT.toFixed(2)} DZD/m³` : 'Tarif non disponible';
+                        return tarif ? `${tarif.PrixHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD/m³` : 'Tarif non disponible';
                       })()
                     ) : 'Sélectionnez un type de devis'}
                   </div>
@@ -831,7 +831,7 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
                                         formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
                                         formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
                         const tarif = tarifType ? getTarifByType(tarifType) : null;
-                        return tarif ? `${(tarif.TauxTVA * 100).toFixed(2)} %` : 'TVA non disponible';
+                        return tarif ? `${(tarif.TauxTVA * 100).toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %` : 'TVA non disponible';
                       })()
                     ) : 'Sélectionnez un type de devis'}
                   </div>
@@ -931,35 +931,35 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
           <div className="totals-grid">
             <div className="total-item">
               <span className="total-label">Volume Total:</span>
-              <span className="total-value">{totals.volumeTotal.toFixed(2)} m³</span>
+              <span className="total-value">{totals.volumeTotal.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³</span>
             </div>
             <div className="total-item highlight">
               <span className="total-label">Total Eau HT:</span>
-              <span className="total-value">{totals.totalEauHT.toFixed(2)} DZD</span>
+              <span className="total-value">{totals.totalEauHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
             </div>
             <div className="total-item">
               <span className="total-label">TVA Eau:</span>
-              <span className="total-value">{totals.totalEauTVA.toFixed(2)} DZD</span>
+              <span className="total-value">{totals.totalEauTVA.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
             </div>
             <div className="total-item highlight">
               <span className="total-label">Total Eau TTC:</span>
-              <span className="total-value">{totals.totalEauTTC.toFixed(2)} DZD</span>
+              <span className="total-value">{totals.totalEauTTC.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
             </div>
             <div className="total-item">
               <span className="total-label">Total Transport HT:</span>
-              <span className="total-value">{totals.totalTransportHT.toFixed(2)} DZD</span>
+              <span className="total-value">{totals.totalTransportHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
             </div>
             <div className="total-item">
               <span className="total-label">TVA Transport:</span>
-              <span className="total-value">{totals.totalTransportTVA.toFixed(2)} DZD</span>
+              <span className="total-value">{totals.totalTransportTVA.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
             </div>
             <div className="total-item highlight">
               <span className="total-label">Total Transport TTC:</span>
-              <span className="total-value">{totals.totalTransportTTC.toFixed(2)} DZD</span>
+              <span className="total-value">{totals.totalTransportTTC.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
             </div>
             <div className="total-item grand-total">
               <span className="total-label">TOTAL GÉNÉRAL TTC:</span>
-              <span className="total-value">{totals.totalTTC.toFixed(2)} DZD</span>
+              <span className="total-value">{totals.totalTTC.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
             </div>
             <div className="total-item grand-total-words">
               <span className="total-label">Ce devis est arrêté à la somme de :</span>
