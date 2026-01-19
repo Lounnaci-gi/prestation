@@ -133,19 +133,11 @@ const Devis = () => {
   };
   
   const handleCancel = async () => {
-    const result = await AlertService.confirm(
-      'Annuler la création',
-      'Êtes-vous sûr de vouloir annuler la création du devis ?',
-      'Annuler',
-      'Continuer'
-    );
-    
-    if (result.isConfirmed) {
-      setShowForm(false);
-      setEditingDevis(null);
-      // Recharger les devis pour s'assurer qu'ils sont à jour
-      await loadDevis();
-    }
+    // Cette fonction est appelée par le formulaire après confirmation
+    // On ferme simplement le formulaire et on recharge la liste des devis
+    setShowForm(false);
+    setEditingDevis(null);
+    await loadDevis();
   };
 
   const columns = [

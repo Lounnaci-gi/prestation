@@ -44,88 +44,116 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
     if (initialData) {
       setIsInitializing(true);
       
-      // Charger les données principales du devis
-      // Gérer les différents formats de données (du tableau ou de l'API)
-      const isApiFormat = initialData.VenteID !== undefined || initialData.DevisID !== undefined;
+      // Détection simple et robuste du format des données
+      // et de la présence de transport
       
-      if (isApiFormat) {
-        // Format provenant de l'API - mapper les champs appropriés
-        setFormData({
-          clientId: initialData.VenteID && initialData.ClientID ? initialData.ClientID.toString() : '',
-          codeClient: initialData.NomRaisonSociale ? initialData.CodeClient || '' : '',
-          nomRaisonSociale: initialData.NomRaisonSociale || '',
-          adresse: initialData.Adresse || '',
-          telephone: initialData.Telephone || '',
-          email: initialData.Email || '',
-          typeDossier: initialData.TypeDossier || initialData.type || '',
-          prixUnitaireM3_HT: initialData.PrixUnitaireM3_HT || initialData.prixUnitaireM3 || '',
-          tauxTVA_Eau: (initialData.TauxTVA_Eau !== undefined ? (initialData.TauxTVA_Eau * 100).toString() : initialData.tauxTVA_Eau || initialData.tauxTVA || '19'),
-          inclureTransport: initialData.inclureTransport || false,
-          prixTransportUnitaire_HT: initialData.PrixTransportUnitaire_HT || initialData.prixTransportUnitaire_HT || initialData.prixTransport || '0',
-          tauxTVA_Transport: (initialData.TauxTVA_Transport !== undefined ? (initialData.TauxTVA_Transport * 100).toString() : initialData.tauxTVA_Transport || '19'),
-          dateDevis: initialData.DateVente ? new Date(initialData.DateVente).toISOString().split('T')[0] : initialData.dateDevis || new Date().toISOString().split('T')[0],
-          statut: initialData.Statut || initialData.statut || 'EN ATTENTE',
-          notes: initialData.Notes || initialData.notes || '',
+      // Déterminer si le devis inclut le transport
+      let hasTransport = false;
+      
+      // 1) Vérifier d'abord dans les propriétés principales (si le backend renvoie un flag global)
+      if (initialData.inclureTransport !== undefined) {
+        hasTransport = !!initialData.inclureTransport;
+      } else if (initialData.InclureTransport !== undefined) {
+        hasTransport = !!initialData.InclureTransport;
+      } else if (initialData.LignesVentes && Array.isArray(initialData.LignesVentes)) {
+        // 2) Sinon, le déduire à partir des lignes : transport présent si un prix de transport > 0
+        hasTransport = initialData.LignesVentes.some(ligne => {
+          const prix = parseFloat(ligne.PrixTransportUnitaire_HT || 0);
+          return !isNaN(prix) && prix > 0;
         });
-        
-        // Charger les lignes de citernes si disponibles
-        if (initialData.LignesVentes && initialData.LignesVentes.length > 0) {
-          // Format de l'API
-          const lignes = initialData.LignesVentes.map(ligne => ({
+      }
+      
+      // Charger les données principales du devis
+      setFormData({
+        clientId: initialData.VenteID && initialData.ClientID ? initialData.ClientID.toString() : initialData.clientId || initialData.id || '',
+        codeClient: initialData.CodeClient || initialData.codeClient || initialData.code || '',
+        nomRaisonSociale: initialData.NomRaisonSociale || initialData.nomRaisonSociale || initialData.client || '',
+        adresse: initialData.Adresse || initialData.adresse || '',
+        telephone: initialData.Telephone || initialData.telephone || '',
+        email: initialData.Email || initialData.email || '',
+        typeDossier: initialData.TypeDossier || initialData.typeDossier || initialData.type || '',
+        prixUnitaireM3_HT: initialData.PrixUnitaireM3_HT || initialData.prixUnitaireM3_HT || initialData.prixUnitaireM3 || '',
+        tauxTVA_Eau: (initialData.TauxTVA_Eau !== undefined ? (initialData.TauxTVA_Eau * 100).toString() : initialData.tauxTVA_Eau || initialData.tauxTVA_Eau || initialData.tauxTVA || '19'),
+        inclureTransport: hasTransport,
+        prixTransportUnitaire_HT: initialData.PrixTransportUnitaire_HT || initialData.prixTransportUnitaire_HT || initialData.prixTransport || '0',
+        tauxTVA_Transport: (initialData.TauxTVA_Transport !== undefined ? (initialData.TauxTVA_Transport * 100).toString() : initialData.tauxTVA_Transport || '19'),
+        dateDevis: initialData.DateVente ? new Date(initialData.DateVente).toISOString().split('T')[0] : initialData.dateDevis || initialData.date || new Date().toISOString().split('T')[0],
+        statut: initialData.Statut || initialData.statut || 'EN ATTENTE',
+        notes: initialData.Notes || initialData.notes || '',
+      });
+      
+      // Charger les lignes de citernes si disponibles
+      if (initialData.LignesVentes && initialData.LignesVentes.length > 0) {
+        // Format de l'API
+        const lignes = initialData.LignesVentes.map(ligne => {
+          // Déterminer si cette ligne inclut le transport
+          let ligneHasTransport = hasTransport; // Par défaut, utiliser le transport global
+          
+          // Si la ligne a sa propre indication de transport, l'utiliser
+          if (ligne.InclureTransport !== undefined) {
+            ligneHasTransport = !!ligne.InclureTransport;
+          } else if (ligne.inclureTransport !== undefined) {
+            ligneHasTransport = !!ligne.inclureTransport;
+          } else {
+            // Sinon, le déduire via le prix de transport : > 0 => transport inclus
+            const prix = parseFloat(ligne.PrixTransportUnitaire_HT || 0);
+            if (!isNaN(prix) && prix > 0) {
+              ligneHasTransport = true;
+            }
+          }
+          
+          return {
             id: ligne.LigneVenteID || Date.now(),
             nombreCiternes: ligne.NombreCiternes?.toString() || '1',
             volumeParCiterne: ligne.VolumeParCiterne?.toString() || '',
-            inclureTransport: ligne.InclureTransport || false
-          }));
-          setCiterneRows(lignes);
-        } else {
-          // Si aucune ligne trouvée, conserver une ligne vide
-          setCiterneRows([
-            { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }
-          ]);
-        }
-      } else {
-        // Ancien format (du tableau ou d'autres sources)
-        setFormData({
-          clientId: initialData.clientId || initialData.id || '',
-          codeClient: initialData.codeClient || initialData.code || '',
-          nomRaisonSociale: initialData.nomRaisonSociale || initialData.client || '',
-          adresse: initialData.adresse || '',
-          telephone: initialData.telephone || '',
-          email: initialData.email || '',
-          typeDossier: initialData.typeDossier || initialData.type || '',
-          prixUnitaireM3_HT: initialData.prixUnitaireM3_HT || initialData.prixUnitaireM3 || '',
-          tauxTVA_Eau: initialData.tauxTVA_Eau || initialData.tauxTVA || '19',
-          inclureTransport: initialData.inclureTransport || false,
-          prixTransportUnitaire_HT: initialData.prixTransportUnitaire_HT || initialData.prixTransport || '0',
-          tauxTVA_Transport: initialData.tauxTVA_Transport || '19',
-          dateDevis: initialData.dateDevis || initialData.date || new Date().toISOString().split('T')[0],
-          statut: initialData.statut || 'EN ATTENTE',
-          notes: initialData.notes || '',
+            inclureTransport: ligneHasTransport
+          };
         });
-        
-        // Charger les lignes de citernes si disponibles
-        if (initialData.citerneRows && initialData.citerneRows.length > 0) {
-          setCiterneRows(initialData.citerneRows);
-        } else if (initialData.lignesVentes && initialData.lignesVentes.length > 0) {
-          // Si les données viennent d'un devis existant avec lignes de ventes
-          const lignes = initialData.lignesVentes.map(ligne => ({
+        setCiterneRows(lignes);
+      } else if (initialData.lignesVentes && initialData.lignesVentes.length > 0) {
+        // Ancien format
+        const lignes = initialData.lignesVentes.map(ligne => {
+          // Déterminer si cette ligne inclut le transport
+          let ligneHasTransport = hasTransport; // Par défaut, utiliser le transport global
+          
+          // Si la ligne a sa propre indication de transport, l'utiliser
+          if (ligne.inclureTransport !== undefined) {
+            ligneHasTransport = !!ligne.inclureTransport;
+          } else if (ligne.InclureTransport !== undefined) {
+            ligneHasTransport = !!ligne.InclureTransport;
+          } else {
+            // Sinon, le déduire via le prix de transport : > 0 => transport inclus
+            const prix = parseFloat(ligne.PrixTransportUnitaire_HT || 0);
+            if (!isNaN(prix) && prix > 0) {
+              ligneHasTransport = true;
+            }
+          }
+          
+          return {
             id: ligne.id || Date.now(),
             nombreCiternes: ligne.nombreCiternes || '1',
             volumeParCiterne: ligne.volumeParCiterne || '',
-            inclureTransport: ligne.inclureTransport || false
-          }));
-          setCiterneRows(lignes);
-        } else {
-          // Si aucune donnée de ligne trouvée, conserver une ligne vide
-          setCiterneRows([
-            { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }
-          ]);
-        }
+            inclureTransport: ligneHasTransport
+          };
+        });
+        setCiterneRows(lignes);
+      } else if (initialData.citerneRows && initialData.citerneRows.length > 0) {
+        // Ancien format direct
+        setCiterneRows(initialData.citerneRows);
+      } else {
+        // Si aucune ligne trouvée, conserver une ligne vide
+        setCiterneRows([
+          { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: hasTransport }
+        ]);
       }
       
       // Désactiver le mode d'initialisation après un court délai pour permettre le rendu
-      setTimeout(() => setIsInitializing(false), 0);
+      setTimeout(() => {
+        setIsInitializing(false);
+        // Forcer un nouveau rendu pour assurer la mise à jour des checkboxes et des totaux
+        setCiterneRows(prev => [...prev]);
+        setFormData(prev => ({ ...prev }));
+      }, 100);
     } else {
       // Réinitialiser les données si pas en mode édition
       setFormData({
@@ -855,8 +883,13 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
                         <div className="transport-checkbox-cell">
                           <input
                             type="checkbox"
-                            checked={row.inclureTransport}
+                            checked={!!row.inclureTransport}
                             onChange={() => toggleTransportCiterne(row.id)}
+                            ref={el => {
+                              if (el) {
+                                el.checked = !!row.inclureTransport;
+                              }
+                            }}
                           />
                         </div>
                       </td>
