@@ -10,6 +10,11 @@ import { amountToWords } from '../../utils/numberToWords';
 import './DevisForm.css';
 
 const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
+  // Fonction pour générer un ID unique
+  const generateUniqueId = () => {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+  };
+  
   const [formData, setFormData] = useState({
     clientId: '',
     // Client info fields
@@ -87,7 +92,7 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
         // Format de l'API
         const lignes = initialData.LignesVentes.map(ligne => {
           // Déterminer si cette ligne inclut le transport
-          let ligneHasTransport = hasTransport; // Par défaut, utiliser le transport global
+          let ligneHasTransport = false; // Initialiser à false par défaut
           
           // Si la ligne a sa propre indication de transport, l'utiliser
           if (ligne.InclureTransport !== undefined) {
@@ -103,7 +108,7 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
           }
           
           return {
-            id: ligne.LigneVenteID || Date.now(),
+            id: ligne.LigneVenteID || generateUniqueId(),
             nombreCiternes: ligne.NombreCiternes?.toString() || '1',
             volumeParCiterne: ligne.VolumeParCiterne?.toString() || '',
             inclureTransport: ligneHasTransport
@@ -114,7 +119,7 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
         // Ancien format
         const lignes = initialData.lignesVentes.map(ligne => {
           // Déterminer si cette ligne inclut le transport
-          let ligneHasTransport = hasTransport; // Par défaut, utiliser le transport global
+          let ligneHasTransport = false; // Initialiser à false par défaut
           
           // Si la ligne a sa propre indication de transport, l'utiliser
           if (ligne.inclureTransport !== undefined) {
@@ -130,7 +135,7 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
           }
           
           return {
-            id: ligne.id || Date.now(),
+            id: ligne.id || generateUniqueId(),
             nombreCiternes: ligne.nombreCiternes || '1',
             volumeParCiterne: ligne.volumeParCiterne || '',
             inclureTransport: ligneHasTransport
@@ -143,7 +148,7 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
       } else {
         // Si aucune ligne trouvée, conserver une ligne vide
         setCiterneRows([
-          { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: hasTransport }
+          { id: generateUniqueId(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: hasTransport }
         ]);
       }
       
@@ -174,13 +179,13 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
         notes: '',
       });
       setCiterneRows([
-        { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }
+        { id: generateUniqueId(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }
       ]);
     }
   }, [initialData]);
 
   const addCiterneRow = () => {
-    setCiterneRows([...citerneRows, { id: Date.now(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }]);
+    setCiterneRows([...citerneRows, { id: generateUniqueId(), nombreCiternes: '1', volumeParCiterne: '', inclureTransport: false }]);
   };
 
   const removeCiterneRow = (id) => {
@@ -885,11 +890,6 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
                             type="checkbox"
                             checked={!!row.inclureTransport}
                             onChange={() => toggleTransportCiterne(row.id)}
-                            ref={el => {
-                              if (el) {
-                                el.checked = !!row.inclureTransport;
-                              }
-                            }}
                           />
                         </div>
                       </td>

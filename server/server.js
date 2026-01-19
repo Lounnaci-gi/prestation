@@ -1250,6 +1250,11 @@ app.put('/api/devis/:id', async (req, res) => {
 app.get('/api/devis/:id', async (req, res) => {
   const devisId = req.params.id;
   
+  // Validation de l'ID
+  if (!devisId || isNaN(parseInt(devisId))) {
+    return res.status(400).json({ error: 'ID du devis invalide' });
+  }
+  
   try {
     const query = `
       SELECT 
@@ -1272,7 +1277,7 @@ app.get('/api/devis/:id', async (req, res) => {
         c.Adresse,
         c.Telephone,
         c.Email,
-        (SELECT '[' + STUFF((
+        ISNULL((SELECT '[' + STUFF((
           SELECT ',' + '{"NombreCiternes":' + ISNULL(CAST(lv2.NombreCiternes AS VARCHAR), 'null') + ',' +
           '"VolumeParCiterne":' + ISNULL(CAST(lv2.VolumeParCiterne AS VARCHAR), 'null') + ',' +
           '"PrixUnitaireM3_HT":' + ISNULL(CAST(lv2.PrixUnitaireM3_HT AS VARCHAR), 'null') + ',' +
@@ -1282,9 +1287,7 @@ app.get('/api/devis/:id', async (req, res) => {
           FROM LignesVentes lv2
           WHERE lv2.VenteID = v.VenteID
           FOR XML PATH('')
-        ), 1, 1, '') + ']'
-        FROM LignesVentes lv
-        WHERE lv.VenteID = v.VenteID) AS LignesVentes
+        ), 1, 1, '') + ']'), '[]') AS LignesVentes
       FROM Devis d
       JOIN Ventes v ON d.VenteID = v.VenteID
       JOIN Clients c ON v.ClientID = c.ClientID
