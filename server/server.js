@@ -873,7 +873,7 @@ app.post('/api/devis', async (req, res) => {
       `;
       
       const ligneParams = [
-        { name: 'venteId', type: 'int', value: venteId },
+        { name: 'venteId', type: 'int', value: parseInt(venteId) },
         { name: 'nombreCiternes', type: 'int', value: parseInt(nombreCiternes) || 1 },
         { name: 'volumeParCiterne', type: 'int', value: parseInt(volumeParCiterne) || 0 },
         { name: 'prixUnitaireM3_HT', type: 'decimal', value: parseFloat(parseFloat(prixUnitaireM3_HT).toFixed(2)) || 0 },
@@ -937,6 +937,312 @@ app.post('/api/devis', async (req, res) => {
   } catch (error) {
     console.error('Erreur lors de la création du devis:', error);
     res.status(500).json({ error: 'Erreur serveur lors de la création du devis', details: error.message });
+  }
+});
+
+// Endpoint pour la mise à jour d'un devis existant
+app.put('/api/devis/:id', async (req, res) => {
+  const devisId = req.params.id;
+  const {
+    clientId,
+    codeClient,
+    nomRaisonSociale,
+    adresse,
+    telephone,
+    email,
+    typeDossier,
+    dateDevis,
+    statut,
+    notes,
+    prixUnitaireM3_HT,
+    tauxTVA_Eau,
+    inclureTransport,
+    prixTransportUnitaire_HT,
+    tauxTVA_Transport,
+    citerneRows
+  } = req.body;
+
+  console.log('=== DÉBUT MISE À JOUR DEVIS ===');
+  console.log('Requête de mise à jour reçue pour devis ID:', devisId);
+  console.log('Données reçues:', { 
+    clientId, 
+    codeClient,
+    nomRaisonSociale,
+    typeDossier, 
+    dateDevis, 
+    statut,
+    citerneRows: citerneRows?.length 
+  });
+  console.log('Contenu citerneRows:', citerneRows);
+  console.log('Type de citerneRows:', typeof citerneRows);
+  console.log('Est-ce un tableau ?', Array.isArray(citerneRows));
+
+  try {
+    // Valider que le devis existe
+    const checkQuery = 'SELECT DevisID FROM Devis WHERE DevisID = @devisId';
+    const checkParams = [
+      { name: 'devisId', type: 'int', value: parseInt(devisId) }
+    ];
+
+    const checkResults = await new Promise((resolve, reject) => {
+      executeQuery(checkQuery, checkParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (!checkResults || checkResults.length === 0) {
+      return res.status(404).json({ error: 'Devis non trouvé' });
+    }
+
+    // Récupérer l'ID de vente associé
+    const venteQuery = `SELECT v.VenteID FROM Devis d JOIN Ventes v ON d.VenteID = v.VenteID WHERE d.DevisID = @devisId`;
+    const venteParams = [
+      { name: 'devisId', type: 'int', value: parseInt(devisId) }
+    ];
+
+    const venteResults = await new Promise((resolve, reject) => {
+      executeQuery(venteQuery, venteParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (!venteResults || venteResults.length === 0) {
+      return res.status(500).json({ error: 'Erreur interne : vente associée non trouvée' });
+    }
+
+    const venteId = venteResults[0].VenteID;
+
+    // Mettre à jour la vente
+    // Le frontend envoie CITERNAGE / PROCES_VOL / ESSAI_RESEAU
+    // mais en base on stocke VENTE / VOL / ESSAI (même logique que pour la création)
+    let venteTypeDossier = typeDossier;
+    switch (typeDossier) {
+      case 'CITERNAGE':
+        venteTypeDossier = 'VENTE';
+        break;
+      case 'PROCES_VOL':
+        venteTypeDossier = 'VOL';
+        break;
+      case 'ESSAI_RESEAU':
+        venteTypeDossier = 'ESSAI';
+        break;
+      default:
+        venteTypeDossier = typeDossier;
+    }
+
+    const updateVenteQuery = `UPDATE Ventes SET TypeDossier = @typeDossier, DateVente = @dateVente WHERE VenteID = @venteId`;
+    const updateVenteParams = [
+      { name: 'typeDossier', type: 'varchar', value: venteTypeDossier },
+      { name: 'dateVente', type: 'datetime', value: new Date(dateDevis) },
+      { name: 'venteId', type: 'int', value: venteId }
+    ];
+
+    await new Promise((resolve, reject) => {
+      executeQuery(updateVenteQuery, updateVenteParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    // Mettre à jour le client
+    const updateClientQuery = `UPDATE Clients SET CodeClient = @codeClient, NomRaisonSociale = @nomRaisonSociale, Adresse = @adresse, Telephone = @telephone, Email = @email WHERE ClientID = @clientId`;
+    const updateClientParams = [
+      { name: 'codeClient', type: 'varchar', value: codeClient },
+      { name: 'nomRaisonSociale', type: 'nvarchar', value: nomRaisonSociale },
+      { name: 'adresse', type: 'nvarchar', value: adresse },
+      { name: 'telephone', type: 'varchar', value: telephone || null },
+      { name: 'email', type: 'varchar', value: email || null },
+      { name: 'clientId', type: 'int', value: parseInt(clientId) }
+    ];
+
+    await new Promise((resolve, reject) => {
+      executeQuery(updateClientQuery, updateClientParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    // Mettre à jour le devis
+    const updateDevisQuery = `UPDATE Devis SET Statut = @statut WHERE DevisID = @devisId`;
+    const updateDevisParams = [
+      { name: 'statut', type: 'varchar', value: statut },
+      { name: 'devisId', type: 'int', value: parseInt(devisId) }
+    ];
+
+    await new Promise((resolve, reject) => {
+      executeQuery(updateDevisQuery, updateDevisParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    // Supprimer les anciennes lignes de vente
+    const deleteLignesQuery = `DELETE FROM LignesVentes WHERE VenteID = @venteId`;
+    const deleteLignesParams = [
+      { name: 'venteId', type: 'int', value: venteId }
+    ];
+
+    await new Promise((resolve, reject) => {
+      executeQuery(deleteLignesQuery, deleteLignesParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    // Recréer les lignes de vente
+    console.log('Début traitement citerneRows, longueur:', citerneRows?.length);
+    if (citerneRows && Array.isArray(citerneRows)) {
+      console.log('Traitement de', citerneRows.length, 'lignes de citernes');
+      for (let i = 0; i < citerneRows.length; i++) {
+        const row = citerneRows[i];
+        console.log('Traitement ligne', i + 1, ':', row);
+        
+        const {
+          nombreCiternes,
+          volumeParCiterne,
+          inclureTransport: rowIncludeTransport
+        } = row;
+        
+        console.log('Valeurs extraites - nombre:', nombreCiternes, 'volume:', volumeParCiterne, 'transport:', rowIncludeTransport);
+
+        // Calculer le prix de transport en fonction du volume
+        let prixTransport = 0;
+        if (rowIncludeTransport) {
+          // Convertir le volume en entier de manière sécurisée
+          const volumeEntier = parseInt(volumeParCiterne);
+          if (!isNaN(volumeEntier) && volumeEntier > 0) {
+            // Requête pour obtenir le prix de transport en fonction du volume
+            const transportQuery = `
+              SELECT TOP 1 PrixHT 
+              FROM Tarifs_Historique 
+              WHERE TypePrestation = 'TRANSPORT'
+                AND (VolumeReference IS NULL OR VolumeReference <= @volume)
+              ORDER BY CASE WHEN VolumeReference IS NULL THEN 1 ELSE 0 END, VolumeReference DESC
+            `;
+            
+            const transportParams = [
+              { name: 'volume', type: 'int', value: volumeEntier }
+            ];
+
+            try {
+              const transportResults = await new Promise((resolve, reject) => {
+                executeQuery(transportQuery, transportParams, (err, results) => {
+                  if (err) reject(err);
+                  else resolve(results);
+                });
+              });
+
+              if (transportResults && transportResults.length > 0) {
+                prixTransport = transportResults[0].PrixHT;
+              } else {
+                // Si aucun tarif de transport trouvé, utiliser la valeur du formulaire
+                prixTransport = parseFloat(prixTransportUnitaire_HT) || 0;
+              }
+            } catch (transportError) {
+              console.warn('Erreur lors de la récupération du tarif de transport, utilisation de la valeur par défaut:', transportError.message);
+              prixTransport = parseFloat(prixTransportUnitaire_HT) || 0;
+            }
+          }
+        }
+
+        const ligneQuery = `
+          INSERT INTO LignesVentes (
+            VenteID, 
+            NombreCiternes, 
+            VolumeParCiterne, 
+            PrixUnitaireM3_HT, 
+            TauxTVA_Eau, 
+            PrixTransportUnitaire_HT, 
+            TauxTVA_Transport
+          )
+          VALUES (
+            @venteId, 
+            @nombreCiternes, 
+            @volumeParCiterne, 
+            @prixUnitaireM3_HT, 
+            @tauxTVA_Eau, 
+            @prixTransportUnitaire_HT, 
+            @tauxTVA_Transport
+          )
+        `;
+        
+        const ligneParams = [
+          { name: 'venteId', type: 'int', value: parseInt(venteId) },
+          { name: 'nombreCiternes', type: 'int', value: parseInt(nombreCiternes) || 1 },
+          { name: 'volumeParCiterne', type: 'int', value: parseInt(volumeParCiterne) || 0 },
+          { name: 'prixUnitaireM3_HT', type: 'decimal', value: parseFloat(parseFloat(prixUnitaireM3_HT).toFixed(2)) || 0 },
+          { name: 'tauxTVA_Eau', type: 'decimal', value: parseFloat(parseFloat(tauxTVA_Eau > 10 ? tauxTVA_Eau / 100 : tauxTVA_Eau).toFixed(4)) || 0 },
+          { name: 'prixTransportUnitaire_HT', type: 'decimal', value: parseFloat(parseFloat(prixTransport).toFixed(2)) || 0 },
+          { name: 'tauxTVA_Transport', type: 'decimal', value: parseFloat(parseFloat(tauxTVA_Transport > 10 ? tauxTVA_Transport / 100 : tauxTVA_Transport).toFixed(4)) || 0 }
+        ];
+
+        console.log('Insertion ligne vente avec params:', ligneParams);
+
+        await new Promise((resolve, reject) => {
+          executeQuery(ligneQuery, ligneParams, (err, results) => {
+            if (err) {
+              console.error('Erreur lors de l\'insertion de la ligne de vente:', err);
+              reject(err);
+            } else {
+              console.log('Ligne de vente insérée avec succès');
+              resolve(results);
+            }
+          });
+        });
+      }
+    } else {
+      console.log('citerneRows est null, undefined ou pas un tableau');
+    }
+
+    // Récupérer les données complètes du devis mis à jour
+    const responseQuery = `
+      SELECT 
+        d.DevisID,
+        d.CodeDevis,
+        d.Statut,
+        d.DateCreation,
+        d.DateModification,
+        v.TypeDossier,
+        v.DateVente,
+        c.NomRaisonSociale,
+        c.Adresse,
+        c.Telephone,
+        c.Email,
+        SUM(lv.NombreCiternes * lv.VolumeParCiterne) as VolumeTotal,
+        SUM((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT)) as TotalEauHT,
+        SUM(((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) * lv.TauxTVA_Eau)) as TotalEauTVA,
+        SUM((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) + ((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) * lv.TauxTVA_Eau)) as TotalEauTTC,
+        SUM(lv.NombreCiternes * lv.PrixTransportUnitaire_HT) as TotalTransportHT,
+        SUM((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) * lv.TauxTVA_Transport) as TotalTransportTVA,
+        SUM((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) + ((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) * lv.TauxTVA_Transport)) as TotalTransportTTC,
+        SUM((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) + (lv.NombreCiternes * lv.PrixTransportUnitaire_HT)) as TotalHT,
+        SUM(((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) * lv.TauxTVA_Eau) + ((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) * lv.TauxTVA_Transport)) as TotalTVA,
+        SUM((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) + ((lv.NombreCiternes * lv.VolumeParCiterne * lv.PrixUnitaireM3_HT) * lv.TauxTVA_Eau) + (lv.NombreCiternes * lv.PrixTransportUnitaire_HT) + ((lv.NombreCiternes * lv.PrixTransportUnitaire_HT) * lv.TauxTVA_Transport)) as TotalTTC
+      FROM Devis d
+      JOIN Ventes v ON d.VenteID = v.VenteID
+      JOIN Clients c ON v.ClientID = c.ClientID
+      LEFT JOIN LignesVentes lv ON v.VenteID = lv.VenteID
+      WHERE d.DevisID = @devisId
+      GROUP BY d.DevisID, d.CodeDevis, d.Statut, d.DateCreation, d.DateModification, v.TypeDossier, v.DateVente, c.NomRaisonSociale, c.Adresse, c.Telephone, c.Email
+    `;
+    
+    const responseParams = [
+      { name: 'devisId', type: 'int', value: parseInt(devisId) }
+    ];
+
+    const finalResult = await new Promise((resolve, reject) => {
+      executeQuery(responseQuery, responseParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    res.json(finalResult[0]);
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du devis:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la mise à jour du devis', details: error.message });
   }
 });
 
