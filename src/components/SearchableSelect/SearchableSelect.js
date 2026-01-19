@@ -105,7 +105,7 @@ const SearchableSelect = ({
   };
 
   // Display value in input
-  const inputValue = searchTerm || (value && displayValue) || '';
+  const inputValue = (searchTerm || (value && displayValue) || '').toString();
 
   // Show create new option when no results and search term exists
   const showCreateNew = searchTerm && filteredOptions.length === 0;

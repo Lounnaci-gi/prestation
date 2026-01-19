@@ -372,9 +372,9 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
             clientId: value,
             codeClient: selectedClient.code,
             nomRaisonSociale: selectedClient.label,
-            adresse: selectedClient.adresse,
-            telephone: selectedClient.telephone,
-            email: selectedClient.email,
+            adresse: selectedClient.adresse || '',
+            telephone: selectedClient.telephone || '',
+            email: selectedClient.email || '',
           }));
         }
       }
