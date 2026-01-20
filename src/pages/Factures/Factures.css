@@ -3,16 +3,16 @@
 }
 
 .status-payee {
-  background-color: #d1fae5;
-  color: #059669;
+  background-color: var(--success-100);
+  color: var(--success-700);
 }
 
 .status-en-attente {
-  background-color: #fef3c7;
-  color: #d97706;
+  background-color: var(--accent-100);
+  color: var(--accent-700);
 }
 
 .status-impayee {
-  background-color: #fee2e2;
-  color: #dc2626;
+  background-color: var(--error-100);
+  color: var(--error-700);
 }

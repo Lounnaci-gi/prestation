@@ -33,15 +33,15 @@
 }
 
 .icon-btn:hover {
-  background-color: #f3f4f6;
+  background-color: var(--secondary-100);
 }
 
 .edit-btn {
-  color: #10b981; /* Vert */
+  color: var(--success-600); /* Vert */
 }
 
 .delete-btn {
-  color: #ef4444; /* Rouge */
+  color: var(--error-600); /* Rouge */
 }
 
 @media (max-width: 768px) {

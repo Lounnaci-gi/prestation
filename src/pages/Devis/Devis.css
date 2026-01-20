@@ -3,18 +3,18 @@
 }
 
 .status-badge.status-accepte {
-  background-color: #d1fae5;
-  color: #059669;
+  background-color: var(--success-100);
+  color: var(--success-700);
 }
 
 .status-badge.status-en-attente {
-  background-color: #fef3c7;
-  color: #d97706;
+  background-color: var(--accent-100);
+  color: var(--accent-700);
 }
 
 .status-badge.status-refuse {
-  background-color: #fee2e2;
-  color: #dc2626;
+  background-color: var(--error-100);
+  color: var(--error-700);
 }
 
 .action-icons {
@@ -37,23 +37,23 @@
 }
 
 .icon-btn:hover {
-  background-color: #f3f4f6;
+  background-color: var(--secondary-100);
 }
 
 .view-btn {
-  color: #3b82f6; /* Bleu */
+  color: var(--primary-600); /* Bleu */
 }
 
 .edit-btn {
-  color: #10b981; /* Vert */
+  color: var(--success-600); /* Vert */
 }
 
 .delete-btn {
-  color: #ef4444; /* Rouge */
+  color: var(--error-600); /* Rouge */
 }
 
 .print-btn {
-  color: #8b5cf6; /* Violet */
+  color: var(--secondary-600); /* Violet */
 }
 
 .loading {

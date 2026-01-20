@@ -353,7 +353,7 @@ const Parametres = () => {
         <h1 className="page-title">Paramètres</h1>
         <p className="page-subtitle">Gestion des paramètres de l'application</p>
       </div>
-
+  
       <Card title="Tarifs et Taxes" style={{ marginTop: '1rem' }}>
         <div className="tarifs-section">
           <div className="tarif-form">
@@ -374,7 +374,7 @@ const Parametres = () => {
                   ))}
                 </select>
               </div>
-                            
+                
               <div className="setting-item">
                 <label className="setting-label">Prix HT (DZD)</label>
                 <input 
@@ -386,7 +386,7 @@ const Parametres = () => {
                   step="0.01"
                 />
               </div>
-                            
+                
               <div className="setting-item">
                 <label className="setting-label">Taux TVA (%)</label>
                 <input 
@@ -398,7 +398,7 @@ const Parametres = () => {
                   step="0.01"
                 />
               </div>
-                            
+                
               <div className="setting-item">
                 <label className="setting-label">Volume de Référence (m³)</label>
                 <input 
@@ -411,7 +411,7 @@ const Parametres = () => {
                   disabled={newTarif.typePrestation !== 'TRANSPORT'}
                 />
               </div>
-                            
+                
               <div className="setting-item">
                 <label className="setting-label">Date de début</label>
                 <input 
@@ -421,7 +421,7 @@ const Parametres = () => {
                   onChange={(e) => setNewTarif({...newTarif, dateDebut: e.target.value})}
                 />
               </div>
-                            
+                
               <div className="setting-item" style={{ alignSelf: 'flex-end' }}>
                 <button 
                   className="btn btn-primary" 
@@ -433,7 +433,7 @@ const Parametres = () => {
               </div>
             </div>
           </div>
-          
+            
           <div className="tarifs-table">
             <h4>Liste des tarifs actuels</h4>
             {tarifs.length === 0 ? (
@@ -494,12 +494,18 @@ const Parametres = () => {
                               value={editData.dateDebut || ''}
                               onChange={(e) => setEditData({...editData, dateDebut: e.target.value})}
                             />
-                            <button className="btn btn-primary" onClick={handleSaveEdit}>Sauver</button>
+                            <button className="btn btn-primary" onClick={handleSaveEdit} title="Sauvegarder">
+                              💾
+                            </button>
                           </>
                         ) : (
                           <>
-                            <button className="btn btn-secondary" onClick={() => handleEdit(tarif)}>Modifier</button>
-                            <button className="btn btn-danger" onClick={() => handleDelete(tarif.id)}>Supprimer</button>
+                            <button className="btn btn-secondary" onClick={() => handleEdit(tarif)} title="Modifier">
+                              ✏️
+                            </button>
+                            <button className="btn btn-danger" onClick={() => handleDelete(tarif.id)} title="Supprimer">
+                              🗑️
+                            </button>
                           </>
                         )}
                       </td>

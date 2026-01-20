@@ -1,7 +1,7 @@
 .card {
-  background: #ffffff;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   transition: all 0.2s ease-in-out;
 }
@@ -17,20 +17,21 @@
 
 .card-header {
   padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--secondary-200);
+  background: linear-gradient(135deg, var(--secondary-50) 0%, var(--secondary-100) 100%);
 }
 
 .card-title {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--secondary-800);
 }
 
 .card-subtitle {
   margin: 0.25rem 0 0 0;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--secondary-600);
 }
 
 .card-content {

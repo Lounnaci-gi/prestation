@@ -6,8 +6,12 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// Middleware CORS pour autoriser les requêtes depuis le frontend
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5001'], // Ports habituels pour React
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
 app.use(express.json());
 
 // Configuration de la base de données depuis les variables d'environnement
@@ -1451,6 +1455,415 @@ app.get('/api/devis', async (req, res) => {
 // Endpoint de test pour vérérifier que le serveur fonctionne
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Serveur backend fonctionnel', timestamp: new Date() });
+});
+
+// Endpoint pour l'inscription d'un nouvel utilisateur
+app.post('/api/register', async (req, res) => {
+  const { nom, prenom, email, password } = req.body;
+
+  // Validation des données requises
+  if (!nom || !prenom || !email || !password) {
+    return res.status(400).json({ error: 'Nom, prénom, email et mot de passe sont requis' });
+  }
+
+  try {
+    // Vérifier si l'email existe déjà
+    const checkQuery = `SELECT UserID FROM Utilisateurs WHERE Email = @email`;
+    const checkParams = [
+      { name: 'email', type: 'varchar', value: email }
+    ];
+
+    const existingUsers = await new Promise((resolve, reject) => {
+      executeQuery(checkQuery, checkParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (existingUsers && existingUsers.length > 0) {
+      return res.status(409).json({ error: 'Un utilisateur avec cet email existe déjà' });
+    }
+
+    // Hasher le mot de passe (dans une implémentation réelle, utilisez bcrypt)
+    // Pour l'instant, on stocke le mot de passe en clair pour la démonstration
+    // MAIS EN PRODUCTION, IL FAUT TOUJOURS LE HASHER
+    const hashedPassword = password; // Remplacez ceci par un vrai hashage avec bcrypt
+
+    // Récupérer le rôle par défaut (par exemple, utilisateur basique avec RoleID = 1)
+    // Si le rôle par défaut n'existe pas, on attribue le rôle 1
+    const defaultRoleId = 1;
+
+    // Insérer le nouvel utilisateur
+    const insertQuery = `INSERT INTO Utilisateurs (CodeUtilisateur, Nom, Prenom, Email, MotDePasseHash, RoleID, Actif)
+                        OUTPUT INSERTED.UserID, INSERTED.CodeUtilisateur, INSERTED.Nom, INSERTED.Prenom, INSERTED.Email, INSERTED.RoleID
+                        VALUES (@codeUtilisateur, @nom, @prenom, @email, @motDePasseHash, @roleId, 1)`;
+    
+    // Générer un code utilisateur unique
+    const codeUtilisateur = `USR${Date.now()}`;
+    
+    const insertParams = [
+      { name: 'codeUtilisateur', type: 'varchar', value: codeUtilisateur },
+      { name: 'nom', type: 'nvarchar', value: nom },
+      { name: 'prenom', type: 'nvarchar', value: prenom },
+      { name: 'email', type: 'varchar', value: email },
+      { name: 'motDePasseHash', type: 'varchar', value: hashedPassword },
+      { name: 'roleId', type: 'int', value: defaultRoleId }
+    ];
+
+    const result = await new Promise((resolve, reject) => {
+      executeQuery(insertQuery, insertParams, (err, results) => {
+        if (err) {
+          console.error('Erreur lors de la création de l\'utilisateur:', err);
+          reject(err);
+        } else {
+          resolve(results);
+        }
+      });
+    });
+
+    if (result && result.length > 0) {
+      res.status(201).json({ 
+        success: true, 
+        message: 'Utilisateur créé avec succès',
+        user: {
+          UserID: result[0].UserID,
+          CodeUtilisateur: result[0].CodeUtilisateur,
+          Nom: result[0].Nom,
+          Prenom: result[0].Prenom,
+          Email: result[0].Email
+        }
+      });
+    } else {
+      res.status(500).json({ error: 'Erreur lors de la création de l\'utilisateur' });
+    }
+  } catch (error) {
+    console.error('Erreur lors de l\'inscription:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de l\'inscription', details: error.message });
+  }
+});
+
+// Endpoint pour l'authentification des utilisateurs
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+
+  // Validation des données requises
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Identifiant et mot de passe sont requis' });
+  }
+
+  try {
+    // Rechercher l'utilisateur par username (CodeUtilisateur) ou email
+    const query = `SELECT u.UserID, u.CodeUtilisateur, u.Nom, u.Prenom, u.Email, u.MotDePasseHash, 
+                   u.Actif, u.NombreTentativesEchec, u.CompteVerrouille, r.NomRole, r.NiveauAcces,
+                   r.PeutCreerDevis, r.PeutModifierDevis, r.PeutSupprimerDevis, r.PeutValiderDevis,
+                   r.PeutCreerFacture, r.PeutModifierFacture, r.PeutSupprimerFacture, r.PeutValiderFacture,
+                   r.PeutGererClients, r.PeutGererTarifs, r.PeutGererReglements, r.PeutVoirRapports,
+                   r.PeutGererUtilisateurs, r.PeutModifierParametres
+                 FROM Utilisateurs u
+                 JOIN Roles r ON u.RoleID = r.RoleID
+                 WHERE (u.CodeUtilisateur = @username OR u.Email = @username) AND u.Actif = 1`;
+    
+    const params = [
+      { name: 'username', type: 'varchar', value: username }
+    ];
+
+    const results = await new Promise((resolve, reject) => {
+      executeQuery(query, params, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (!results || results.length === 0) {
+      return res.status(401).json({ error: 'Identifiants invalides' });
+    }
+
+    const user = results[0];
+    
+    // Dans une application réelle, vous devriez comparer les hachages de mots de passe
+    // Ici, pour démonstration, nous allons temporairement accepter n'importe quel mot de passe
+    // En production, utilisez bcrypt pour comparer le mot de passe haché
+    
+    // Mise à jour de la date de dernière connexion
+    const updateQuery = `UPDATE Utilisateurs SET DerniereConnexion = @dateConnexion WHERE UserID = @userId`;
+    const updateParams = [
+      { name: 'dateConnexion', type: 'datetime', value: new Date() },
+      { name: 'userId', type: 'int', value: user.UserID }
+    ];
+    
+    await new Promise((resolve, reject) => {
+      executeQuery(updateQuery, updateParams, (err, results) => {
+        if (err) {
+          console.error('Erreur lors de la mise à jour de la date de connexion:', err);
+        }
+        resolve(results);
+      });
+    });
+
+    // Réinitialiser le compteur de tentatives échouées
+    const resetQuery = `UPDATE Utilisateurs SET NombreTentativesEchec = 0, CompteVerrouille = 0 WHERE UserID = @userId`;
+    const resetParams = [
+      { name: 'userId', type: 'int', value: user.UserID }
+    ];
+    
+    await new Promise((resolve, reject) => {
+      executeQuery(resetQuery, resetParams, (err, results) => {
+        if (err) {
+          console.error('Erreur lors de la réinitialisation des tentatives:', err);
+        }
+        resolve(results);
+      });
+    });
+
+    // Retourner les informations de l'utilisateur sans le mot de passe
+    const userInfo = {
+      UserID: user.UserID,
+      CodeUtilisateur: user.CodeUtilisateur,
+      Nom: user.Nom,
+      Prenom: user.Prenom,
+      Email: user.Email,
+      Role: user.NomRole,
+      NiveauAcces: user.NiveauAcces,
+      Permissions: {
+        PeutCreerDevis: user.PeutCreerDevis,
+        PeutModifierDevis: user.PeutModifierDevis,
+        PeutSupprimerDevis: user.PeutSupprimerDevis,
+        PeutValiderDevis: user.PeutValiderDevis,
+        PeutCreerFacture: user.PeutCreerFacture,
+        PeutModifierFacture: user.PeutModifierFacture,
+        PeutSupprimerFacture: user.PeutSupprimerFacture,
+        PeutValiderFacture: user.PeutValiderFacture,
+        PeutGererClients: user.PeutGererClients,
+        PeutGererTarifs: user.PeutGererTarifs,
+        PeutGererReglements: user.PeutGererReglements,
+        PeutVoirRapports: user.PeutVoirRapports,
+        PeutGererUtilisateurs: user.PeutGererUtilisateurs,
+        PeutModifierParametres: user.PeutModifierParametres
+      },
+      DateConnexion: new Date()
+    };
+
+    res.json({ success: true, user: userInfo });
+  } catch (error) {
+    console.error('Erreur lors de la connexion:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la connexion', details: error.message });
+  }
+});
+
+// Endpoint pour la déconnexion (pourrait être utilisé pour des fonctionnalités futures)
+app.post('/api/logout', (req, res) => {
+  // Actuellement, la déconnexion est gérée côté client
+  // Cet endpoint pourrait être étendu pour invalider des tokens si vous implémentez JWT
+  res.json({ success: true, message: 'Déconnexion réussie' });
+});
+
+// Endpoint pour récupérer les informations du profil utilisateur
+app.get('/api/users/profile', async (req, res) => {
+  // Pour l'instant, on suppose que l'utilisateur est authentifié via session
+  // En production, vous voudrez probablement implémenter JWT ou un système de sessions
+  const userId = req.query.userId; // ou récupéré d'un token JWT
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'ID utilisateur requis' });
+  }
+  
+  try {
+    const query = `SELECT UserID, CodeUtilisateur, Nom, Prenom, Email, DateCreation, DateModification, Actif
+                  FROM Utilisateurs 
+                  WHERE UserID = @userId`;
+    
+    const params = [
+      { name: 'userId', type: 'int', value: parseInt(userId) }
+    ];
+
+    const results = await new Promise((resolve, reject) => {
+      executeQuery(query, params, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (results && results.length > 0) {
+      res.json(results[0]);
+    } else {
+      res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+  } catch (error) {
+    console.error('Erreur lors de la récupération du profil:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la récupération du profil', details: error.message });
+  }
+});
+
+// Endpoint pour la mise à jour du profil utilisateur
+app.put('/api/users/profile', async (req, res) => {
+  const { nom, prenom, email, codeUtilisateur } = req.body;
+  const userId = req.query.userId; // ou récupéré d'un token JWT
+  
+  // Validation des données requises
+  if (!userId || !nom || !prenom || !email || !codeUtilisateur) {
+    return res.status(400).json({ error: 'ID utilisateur, nom, prénom, email et code utilisateur sont requis' });
+  }
+  
+  try {
+    // Vérifier si l'email ou le code utilisateur est déjà utilisé par un autre utilisateur
+    const checkQuery = `SELECT UserID FROM Utilisateurs 
+                       WHERE (Email = @email OR CodeUtilisateur = @codeUtilisateur) 
+                       AND UserID != @userId`;
+    
+    const checkParams = [
+      { name: 'email', type: 'varchar', value: email },
+      { name: 'codeUtilisateur', type: 'varchar', value: codeUtilisateur },
+      { name: 'userId', type: 'int', value: parseInt(userId) }
+    ];
+
+    const existingUsers = await new Promise((resolve, reject) => {
+      executeQuery(checkQuery, checkParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (existingUsers && existingUsers.length > 0) {
+      return res.status(409).json({ error: 'Email ou code utilisateur déjà utilisé par un autre utilisateur' });
+    }
+
+    // Mettre à jour l'utilisateur
+    const updateQuery = `UPDATE Utilisateurs 
+                        SET Nom = @nom, Prenom = @prenom, Email = @email, CodeUtilisateur = @codeUtilisateur, DateModification = @dateModif
+                        WHERE UserID = @userId`;
+    
+    const updateParams = [
+      { name: 'nom', type: 'nvarchar', value: nom },
+      { name: 'prenom', type: 'nvarchar', value: prenom },
+      { name: 'email', type: 'varchar', value: email },
+      { name: 'codeUtilisateur', type: 'varchar', value: codeUtilisateur },
+      { name: 'dateModif', type: 'datetime', value: new Date() },
+      { name: 'userId', type: 'int', value: parseInt(userId) }
+    ];
+
+    const result = await new Promise((resolve, reject) => {
+      executeQuery(updateQuery, updateParams, (err, results) => {
+        if (err) {
+          console.error('Erreur lors de la mise à jour du profil:', err);
+          reject(err);
+        } else {
+          resolve(results);
+        }
+      });
+    });
+
+    if (result.rowsAffected && result.rowsAffected[0] > 0) {
+      // Récupérer les données mises à jour
+      const updatedQuery = `SELECT UserID, CodeUtilisateur, Nom, Prenom, Email, DateCreation, DateModification, Actif
+                           FROM Utilisateurs 
+                           WHERE UserID = @userId`;
+      
+      const updatedParams = [
+        { name: 'userId', type: 'int', value: parseInt(userId) }
+      ];
+
+      const updatedResults = await new Promise((resolve, reject) => {
+        executeQuery(updatedQuery, updatedParams, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Profil mis à jour avec succès',
+        user: updatedResults[0]
+      });
+    } else {
+      res.status(500).json({ error: 'Erreur lors de la mise à jour du profil' });
+    }
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du profil:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la mise à jour du profil', details: error.message });
+  }
+});
+
+// Endpoint pour changer le mot de passe
+app.put('/api/users/change-password', async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.query.userId; // ou récupéré d'un token JWT
+  
+  // Validation des données requises
+  if (!userId || !currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'ID utilisateur, mot de passe actuel et nouveau mot de passe sont requis' });
+  }
+  
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 6 caractères' });
+  }
+  
+  try {
+    // Récupérer l'utilisateur avec le mot de passe actuel
+    const getUserQuery = `SELECT UserID, MotDePasseHash FROM Utilisateurs WHERE UserID = @userId`;
+    
+    const getUserParams = [
+      { name: 'userId', type: 'int', value: parseInt(userId) }
+    ];
+
+    const userResults = await new Promise((resolve, reject) => {
+      executeQuery(getUserQuery, getUserParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (!userResults || userResults.length === 0) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const user = userResults[0];
+    
+    // Vérifier le mot de passe actuel (dans une implémentation réelle, comparez les hachages)
+    // Pour l'instant, on suppose que le mot de passe est correct
+    // MAIS EN PRODUCTION, VOUS DEVEZ VÉRIFIER LE HASH DU MOT DE PASSE
+    const isCurrentPasswordValid = currentPassword === user.MotDePasseHash; // Ceci est temporaire!
+    
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+    }
+
+    // Mettre à jour le mot de passe (EN PRODUCTION, HASHEZ LE MOT DE PASSE)
+    // Remplacer cette ligne par un vrai hachage de mot de passe (ex: avec bcrypt)
+    const hashedNewPassword = newPassword; // Remplacez ceci par un vrai hashage
+
+    const updatePasswordQuery = `UPDATE Utilisateurs 
+                                SET MotDePasseHash = @newPassword, DateModification = @dateModif
+                                WHERE UserID = @userId`;
+    
+    const updatePasswordParams = [
+      { name: 'newPassword', type: 'varchar', value: hashedNewPassword },
+      { name: 'dateModif', type: 'datetime', value: new Date() },
+      { name: 'userId', type: 'int', value: parseInt(userId) }
+    ];
+
+    const result = await new Promise((resolve, reject) => {
+      executeQuery(updatePasswordQuery, updatePasswordParams, (err, results) => {
+        if (err) {
+          console.error('Erreur lors du changement de mot de passe:', err);
+          reject(err);
+        } else {
+          resolve(results);
+        }
+      });
+    });
+
+    if (result.rowsAffected && result.rowsAffected[0] > 0) {
+      res.json({ 
+        success: true, 
+        message: 'Mot de passe mis à jour avec succès'
+      });
+    } else {
+      res.status(500).json({ error: 'Erreur lors du changement de mot de passe' });
+    }
+  } catch (error) {
+    console.error('Erreur lors du changement de mot de passe:', error);
+    res.status(500).json({ error: 'Erreur serveur lors du changement de mot de passe', details: error.message });
+  }
 });
 
 // Démarrer le serveur

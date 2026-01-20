@@ -664,9 +664,15 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
       <div className="form-header">
         <h2 className="form-title">Nouveau devis</h2>
         <div className="header-actions">
-          <button className="btn btn-cancel" onClick={(e) => handleCancel(e)}>Annuler</button>
-          <button className="btn btn-save" type="submit">Enregistrer</button>
-          <button className="btn btn-finalize">Finaliser et envoyer</button>
+          <button className="btn btn-cancel" onClick={(e) => handleCancel(e)} title="Annuler">
+            ❌
+          </button>
+          <button className="btn btn-save" type="submit" title="Enregistrer">
+            💾
+          </button>
+          <button className="btn btn-finalize" title="Finaliser et envoyer">
+            ✅
+          </button>
         </div>
       </div>
 
