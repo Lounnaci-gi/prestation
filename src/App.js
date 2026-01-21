@@ -10,6 +10,7 @@ import Ventes from './pages/Ventes';
 import Devis from './pages/Devis';
 import Factures from './pages/Factures';
 import Parametres from './pages/Parametres';
+import Profile from './pages/Profile';
 import './App.css';
 
 // Composant pour les routes protégées
@@ -45,6 +46,7 @@ const AppContent = () => {
                     <Route path="/devis" element={<Devis />} />
                     <Route path="/factures" element={<Factures />} />
                     <Route path="/parametres" element={<Parametres />} />
+                    <Route path="/profile" element={<Profile />} />
                   </Routes>
                 </Layout>
               </>

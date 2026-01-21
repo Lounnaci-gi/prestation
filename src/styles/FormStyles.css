@@ -1,0 +1,270 @@
+/* Styles avancés pour les formulaires */
+
+/* Style moderne pour les inputs */
+.modern-input {
+  position: relative;
+  width: 100%;
+}
+
+.modern-input input,
+.modern-input textarea,
+.modern-input select {
+  width: 100%;
+  padding: 0.875rem 1.25rem;
+  border: 1px solid var(--secondary-300);
+  border-radius: 0.625rem;
+  font-size: 0.9rem;
+  background: #ffffff;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.025);
+}
+
+.modern-input input:focus,
+.modern-input textarea:focus,
+.modern-input select:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), inset 0 1px 2px rgba(0, 0, 0, 0.025);
+  background: #f9fafb;
+  transform: translateY(-1px);
+}
+
+.modern-input input:disabled,
+.modern-input textarea:disabled,
+.modern-input select:disabled {
+  background: var(--secondary-100);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Label flottant */
+.floating-label {
+  position: relative;
+}
+
+.floating-label input,
+.floating-label textarea,
+.floating-label select {
+  padding-top: 1.25rem;
+  padding-bottom: 0.5rem;
+}
+
+.floating-label label {
+  position: absolute;
+  top: 0.875rem;
+  left: 1.25rem;
+  font-size: 0.9rem;
+  color: var(--secondary-500);
+  transition: all 0.3s ease;
+  pointer-events: none;
+  background: white;
+  padding: 0 0.25rem;
+}
+
+.floating-label input:focus + label,
+.floating-label textarea:focus + label,
+.floating-label select:focus + label,
+.floating-label input:not(:placeholder-shown) + label,
+.floating-label textarea:not(:placeholder-shown) + label {
+  top: 0.25rem;
+  left: 1.25rem;
+  font-size: 0.75rem;
+  color: var(--primary-600);
+  font-weight: 500;
+}
+
+/* Style pour les checkboxes modernes */
+.modern-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  position: relative;
+}
+
+.modern-checkbox input[type="checkbox"] {
+  opacity: 0;
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.modern-checkbox .checkmark {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--secondary-400);
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.modern-checkbox input[type="checkbox"]:checked + .checkmark {
+  background: var(--primary-500);
+  border-color: var(--primary-500);
+}
+
+.modern-checkbox .checkmark::after {
+  content: "✓";
+  color: white;
+  font-size: 0.8rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.modern-checkbox input[type="checkbox"]:checked + .checkmark::after {
+  opacity: 1;
+}
+
+.modern-checkbox input[type="checkbox"]:focus + .checkmark {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* Style pour les radios modernes */
+.modern-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  position: relative;
+}
+
+.modern-radio input[type="radio"] {
+  opacity: 0;
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.modern-radio .radiomark {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--secondary-400);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.modern-radio .radiomark::before {
+  content: "";
+  width: 0.625rem;
+  height: 0.625rem;
+  background: var(--primary-500);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.modern-radio input[type="radio"]:checked + .radiomark {
+  border-color: var(--primary-500);
+}
+
+.modern-radio input[type="radio"]:checked + .radiomark::before {
+  opacity: 1;
+}
+
+.modern-radio input[type="radio"]:focus + .radiomark {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* Boutons radio group */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Style pour les selects modernes */
+.modern-select {
+  position: relative;
+}
+
+.modern-select select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 1.25rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 3rem;
+}
+
+.modern-select select:focus {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%233b82f6' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+}
+
+/* Zone de téléchargement de fichiers */
+.file-upload-area {
+  border: 2px dashed var(--secondary-300);
+  border-radius: 0.625rem;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  background: var(--secondary-50);
+  cursor: pointer;
+}
+
+.file-upload-area:hover {
+  border-color: var(--primary-400);
+  background: var(--primary-50);
+}
+
+.file-upload-area.drag-over {
+  border-color: var(--primary-500);
+  background: var(--primary-100);
+}
+
+.file-upload-icon {
+  font-size: 2.5rem;
+  color: var(--primary-400);
+  margin-bottom: 0.75rem;
+}
+
+.file-upload-text {
+  color: var(--secondary-600);
+  margin-bottom: 0.5rem;
+}
+
+.file-upload-hint {
+  font-size: 0.8rem;
+  color: var(--secondary-500);
+}
+
+/* Barre de progression */
+.progress-bar {
+  width: 100%;
+  height: 0.5rem;
+  background-color: var(--secondary-200);
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-400), var(--primary-600));
+  transition: width 0.3s ease;
+  border-radius: 0.25rem;
+}
+
+/* Champ avec icône */
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-icon .icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--secondary-500);
+}
+
+.input-with-icon input {
+  padding-left: 2.5rem;
+}

@@ -1,50 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Card from '../../components/Card';
-import { getAllDevis } from '../../api/devisApi';
-import { getAllClients } from '../../api/clientsApi';
 import './Dashboard.css';
 
 const Dashboard = () => {
-  const [pendingDevisCount, setPendingDevisCount] = useState(0);
-  const [totalClientsCount, setTotalClientsCount] = useState(0);
-  
-  useEffect(() => {
-    const loadPendingDevis = async () => {
-      try {
-        const devisData = await getAllDevis();
-        // Compter les devis avec le statut 'EN ATTENTE'
-        const pendingDevis = devisData.filter(devis => 
-          devis.Statut && devis.Statut.toUpperCase() === 'EN ATTENTE'
-        );
-        setPendingDevisCount(pendingDevis.length);
-      } catch (error) {
-        console.error('Erreur lors du chargement des devis en attente:', error);
-        // Garder la valeur par défaut en cas d'erreur
-      }
-    };
-    
-    loadPendingDevis();
-  }, []);
-  
-  useEffect(() => {
-    const loadTotalClients = async () => {
-      try {
-        const clientsData = await getAllClients();
-        setTotalClientsCount(clientsData.length);
-      } catch (error) {
-        console.error('Erreur lors du chargement des clients:', error);
-        // Garder la valeur par défaut en cas d'erreur
-      }
-    };
-    
-    loadTotalClients();
-  }, []);
-  
   const stats = [
     {
       title: 'Total Clients',
-      value: totalClientsCount.toString(),
-      change: totalClientsCount > 0 ? `+${Math.floor(Math.random() * 10)}%` : '0%',
+      value: '245',
+      change: '+12%',
       trend: 'up',
       icon: '👥',
       color: '#0369a1',
@@ -59,9 +22,9 @@ const Dashboard = () => {
     },
     {
       title: 'Devis en Attente',
-      value: pendingDevisCount.toString(),
-      change: pendingDevisCount > 0 ? `+${Math.floor(Math.random() * 10)}%` : '0%',
-      trend: 'up',
+      value: '32',
+      change: '-5%',
+      trend: 'down',
       icon: '📄',
       color: '#f59e0b',
     },
@@ -93,6 +56,9 @@ const Dashboard = () => {
         {stats.map((stat, index) => (
           <Card key={index} className="stat-card">
             <div className="stat-content">
+              <div className="stat-icon" style={{ backgroundColor: `${stat.color}20` }}>
+                <span className="icon">{stat.icon}</span>
+              </div>
               <div className="stat-details">
                 <p className="stat-title">{stat.title}</p>
                 <h2 className="stat-value">{stat.value}</h2>
