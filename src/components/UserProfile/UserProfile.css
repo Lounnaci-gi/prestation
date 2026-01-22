@@ -40,6 +40,14 @@
   font-weight: 600;
 }
 
+.section-note {
+  color: var(--secondary-600);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  font-style: italic;
+  padding-left: 0.5rem;
+}
+
 .profile-form, .password-form {
   display: flex;
   flex-direction: column;

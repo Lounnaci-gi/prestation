@@ -146,6 +146,7 @@ const UserProfile = () => {
       <div className="profile-sections">
         <div className="profile-section">
           <h3>Informations Personnelles</h3>
+          <p className="section-note">Vous pouvez modifier votre identifiant (nom d'utilisateur) et vos informations personnelles ci-dessous :</p>
           <form onSubmit={handleUpdateProfile} className="profile-form">
             <div className="form-group">
               <label htmlFor="nom">Nom:</label>
@@ -184,7 +185,7 @@ const UserProfile = () => {
             </div>
             
             <div className="form-group">
-              <label htmlFor="codeUtilisateur">Identifiant:</label>
+              <label htmlFor="codeUtilisateur">Identifiant (Nom d'utilisateur):</label>
               <input
                 type="text"
                 id="codeUtilisateur"

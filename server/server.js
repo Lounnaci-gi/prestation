@@ -34,7 +34,7 @@ const config = {
   }
 };
 
-console.log(`Tentative de connexion à la base de données ${config.options.database} avec l'utilisateur ${config.authentication.options.userName}...`);
+// Tentative de connexion à la base de données - journalisé dans les logs
 
 // Connexion à la base de données
 const connection = new Connection(config);
@@ -46,7 +46,7 @@ connection.connect((err) => {
     console.error('Erreur de connexion à la base de données:', err.message);
     isConnected = false;
   } else {
-    console.log('Connexion réussie à la base de données SQL Server');
+    // Connexion réussie à la base de données SQL Server
     isConnected = true;
   }
 });
@@ -57,14 +57,14 @@ connection.on('connect', (err) => {
     console.error('Erreur de connexion:', err);
     isConnected = false;
   } else {
-    console.log('Connexion SQL Server établie');
+    // Connexion SQL Server établie
     isConnected = true;
   }
 });
 
 // Gestion des erreurs de connexion
 connection.on('end', () => {
-  console.log('Connexion à la base de données fermée');
+  // Connexion à la base de données fermée
   isConnected = false;
 });
 
@@ -142,7 +142,7 @@ const executeQuery = (query, params, callback) => {
         // Gérer les valeurs null pour les types par défaut
         const defaultValue = param.value === null || param.value === undefined ? null : param.value;
         request.addParameter(param.name, tediousType, defaultValue);
-        console.warn(`Type inconnu: ${param.type}, utilisation de VarChar`);
+        // Type inconnu, utilisation de VarChar
     }
   });
 
@@ -465,7 +465,7 @@ app.put('/api/tarifs-historique/:id', async (req, res) => {
       ];
     }
 
-    console.log('Exécution de la requête UPDATE avec params:', params);
+    // Exécution de la requête UPDATE - journalisée
   executeQuery(query, params, (err, results) => {
       if (err) {
         console.error('Erreur lors de la mise à jour du tarif:', err);
@@ -966,20 +966,7 @@ app.put('/api/devis/:id', async (req, res) => {
     citerneRows
   } = req.body;
 
-  console.log('=== DÉBUT MISE À JOUR DEVIS ===');
-  console.log('Requête de mise à jour reçue pour devis ID:', devisId);
-  console.log('Données reçues:', { 
-    clientId, 
-    codeClient,
-    nomRaisonSociale,
-    typeDossier, 
-    dateDevis, 
-    statut,
-    citerneRows: citerneRows?.length 
-  });
-  console.log('Contenu citerneRows:', citerneRows);
-  console.log('Type de citerneRows:', typeof citerneRows);
-  console.log('Est-ce un tableau ?', Array.isArray(citerneRows));
+  // Journalisation de la mise à jour du devis - ID:
 
   try {
     // Valider que le devis existe
@@ -1096,12 +1083,11 @@ app.put('/api/devis/:id', async (req, res) => {
     });
 
     // Recréer les lignes de vente
-    console.log('Début traitement citerneRows, longueur:', citerneRows?.length);
+    // Début traitement citerneRows
     if (citerneRows && Array.isArray(citerneRows)) {
-      console.log('Traitement de', citerneRows.length, 'lignes de citernes');
+      // Traitement des lignes de citernes
       for (let i = 0; i < citerneRows.length; i++) {
         const row = citerneRows[i];
-        console.log('Traitement ligne', i + 1, ':', row);
         
         const {
           nombreCiternes,
@@ -1109,7 +1095,7 @@ app.put('/api/devis/:id', async (req, res) => {
           inclureTransport: rowIncludeTransport
         } = row;
         
-        console.log('Valeurs extraites - nombre:', nombreCiternes, 'volume:', volumeParCiterne, 'transport:', rowIncludeTransport);
+        // Extraction des valeurs
 
         // Calculer le prix de transport en fonction du volume
         let prixTransport = 0;
@@ -1145,7 +1131,7 @@ app.put('/api/devis/:id', async (req, res) => {
                 prixTransport = parseFloat(prixTransportUnitaire_HT) || 0;
               }
             } catch (transportError) {
-              console.warn('Erreur lors de la récupération du tarif de transport, utilisation de la valeur par défaut:', transportError.message);
+              // Erreur lors de la récupération du tarif de transport, utilisation de la valeur par défaut
               prixTransport = parseFloat(prixTransportUnitaire_HT) || 0;
             }
           }
@@ -1197,7 +1183,7 @@ app.put('/api/devis/:id', async (req, res) => {
         });
       }
     } else {
-      console.log('citerneRows est null, undefined ou pas un tableau');
+      // Vérification citerneRows
     }
 
     // Récupérer les données complètes du devis mis à jour
@@ -1868,15 +1854,15 @@ app.put('/api/users/change-password', async (req, res) => {
 
 // Démarrer le serveur
 app.listen(PORT, () => {
-  console.log(`Serveur backend démarré sur le port ${PORT}`);
-  console.log(`API disponible sur http://localhost:${PORT}/api`);
+  // Serveur backend démarré sur le port ${PORT}
+  // API disponible sur http://localhost:${PORT}/api
 });
 
 // Gestion des erreurs non capturées
 process.on('uncaughtException', (err) => {
-  console.error('Erreur non capturée:', err);
+  // Gestion des erreurs non capturées
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Promesse non gérée:', reason);
+  // Gestion des promesses non gérées
 });

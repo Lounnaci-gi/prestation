@@ -1,6 +1,6 @@
 .profile-page {
   padding: 1rem;
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
 }
 
@@ -21,28 +21,161 @@
   font-size: 1rem;
 }
 
-.loading-spinner {
-  text-align: center;
-  padding: 2rem;
-  color: #6b7280;
-}
-
-.profile-form {
-  padding: 1rem;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+.alert {
+  padding: 0.75rem;
+  border-radius: 0.375rem;
   margin-bottom: 1rem;
+  text-align: center;
+}
+
+.alert-success {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.alert-error {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.profile-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.profile-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.profile-card, .security-card {
+  margin-bottom: 0;
+}
+
+.card-content {
+  padding: 1.5rem;
+}
+
+.personal-info-form {
+  width: 100%;
+}
+
+.form-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.form-group {
+  flex: 1;
+  min-width: 250px;
+}
+
+.password-section {
+  width: 100%;
+}
+
+.password-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.password-description {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0;
+  text-align: center;
+}
+
+.password-form {
+  width: 100%;
 }
 
 .form-actions {
   display: flex;
+  gap: 1rem;
   justify-content: flex-end;
   padding-top: 1rem;
   border-top: 1px solid #e5e7eb;
+  margin-top: 1rem;
+}
+
+.password-actions {
+  justify-content: space-between;
+}
+
+.save-button, .save-password-btn {
+  min-width: 200px;
+}
+
+/* Styles simples pour les boutons */
+.btn-primary {
+  padding: 0.5rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: white;
+  background-color: #3b82f6;
+  border: 1px solid #3b82f6;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 0.5rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: white;
+  background-color: #6b7280;
+  border: 1px solid #6b7280;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #4b5563;
+  border-color: #4b5563;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-outline {
+  padding: 0.5rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: #3b82f6;
+  background-color: white;
+  border: 1px solid #3b82f6;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-outline:hover {
+  background-color: #3b82f6;
+  color: white;
 }
 
 /* Responsive design */
@@ -55,34 +188,38 @@
     font-size: 1.5rem;
   }
   
-  .form-grid {
-    grid-template-columns: 1fr;
+  .form-row {
+    flex-direction: column;
     gap: 1rem;
   }
   
+  .form-group {
+    min-width: 100%;
+  }
+  
   .form-actions {
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .save-button, .save-password-btn {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .password-actions {
+    flex-direction: column;
   }
 }
 
 /* Animation pour les champs */
-.profile-form .setting-input {
+.personal-info-form .setting-input,
+.password-form .setting-input {
   transition: all 0.2s ease-in-out;
 }
 
-.profile-form .setting-input:focus {
+.personal-info-form .setting-input:focus,
+.password-form .setting-input:focus {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(3, 105, 161, 0.15);
-}
-
-/* Style pour le bouton d'action */
-.form-actions .btn-primary {
-  padding: 0.75rem 2rem;
-  font-weight: 500;
-  transition: all 0.2s ease-in-out;
-}
-
-.form-actions .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(3, 105, 161, 0.25);
 }
