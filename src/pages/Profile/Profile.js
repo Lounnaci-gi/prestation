@@ -162,7 +162,6 @@ const Profile = () => {
       
     } catch (err) {
       setError(err.message || 'Erreur de connexion au serveur');
-      console.error('Erreur de mise à jour du profil:', err);
     } finally {
       setLoading(false);
     }

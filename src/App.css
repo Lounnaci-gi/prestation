@@ -2,7 +2,8 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f9fafb;
+  background: linear-gradient(135deg, var(--secondary-50) 0%, #f9fafb 100%);
+  transition: background-color var(--transition-base);
 }
 
 * {
@@ -12,4 +13,9 @@
 a {
   text-decoration: none;
   color: inherit;
+  transition: color var(--transition-base);
+}
+
+a:hover {
+  color: var(--primary-600);
 }

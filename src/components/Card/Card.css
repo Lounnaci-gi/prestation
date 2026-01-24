@@ -1,10 +1,28 @@
 .card {
   background: white;
-  border-radius: 1rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all var(--transition-base) cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid var(--secondary-100);
+  position: relative;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-primary);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--transition-base);
+}
+
+.card:hover::before {
+  transform: scaleX(1);
 }
 
 .card-hover {
@@ -12,30 +30,43 @@
 }
 
 .card-hover:hover {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  transform: translateY(-4px);
-  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-6px);
+  border-color: var(--primary-200);
 }
 
 .card-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--secondary-200);
-  background: linear-gradient(135deg, var(--secondary-50) 0%, var(--secondary-100) 100%);
+  padding: var(--spacing-6) var(--spacing-6);
+  border-bottom: 1px solid #bae6fd;
+  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+  position: relative;
+}
+
+.card-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #0ea5e9, transparent);
 }
 
 .card-title {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
   color: var(--secondary-800);
+  letter-spacing: -0.3px;
 }
 
 .card-subtitle {
-  margin: 0.25rem 0 0 0;
-  font-size: 0.875rem;
+  margin: var(--spacing-1) 0 0 0;
+  font-size: var(--text-sm);
   color: var(--secondary-600);
+  font-weight: var(--font-normal);
 }
 
 .card-content {
-  padding: 1.5rem;
+  padding: var(--spacing-6);
 }

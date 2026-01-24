@@ -21,7 +21,6 @@ export const AuthProvider = ({ children }) => {
       try {
         setUser(JSON.parse(storedUser));
       } catch (error) {
-        console.error('Erreur lors de la lecture des données utilisateur:', error);
         localStorage.removeItem('user'); // Supprimer les données corrompues
       }
     }

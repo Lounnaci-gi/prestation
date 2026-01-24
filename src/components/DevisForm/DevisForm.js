@@ -224,7 +224,7 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
         const fetchedTarifs = await getAllTarifs();
         setTarifs(fetchedTarifs);
       } catch (error) {
-        console.error('Erreur lors du chargement des tarifs:', error);
+        // En cas d'erreur, on garde les tarifs vides
       }
     };
 
@@ -326,7 +326,6 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
       
       setClients(transformedClients);
     } catch (error) {
-      console.error('Erreur lors du chargement des clients:', error);
       // En cas d'erreur, on garde quand même l'option pour créer un nouveau client
       setClients([{ value: 'new', label: '+ Créer un nouveau client', code: 'NEW', isNew: true }]);
     } finally {
@@ -578,28 +577,20 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
   };
 
   const handleSubmit = async (e) => {
-    console.log('=== handleSubmit called ===');
     e.preventDefault();
-    console.log('Form data:', formData);
-    console.log('Form errors:', errors);
     
     const isValid = validateForm();
-    console.log('Form validation result:', isValid);
     
     if (isValid) {
       const totals = calculateTotals();
-      console.log('Calculated totals:', totals);
       
       // Afficher une confirmation avant de soumettre
-      console.log('Showing confirmation dialog...');
       const result = await AlertService.confirm(
         'Créer le devis', 
         'Êtes-vous sûr de vouloir créer ce devis ?', 
         'Créer', 
         'Annuler'
       );
-      
-      console.log('Confirmation result:', result);
       
       if (result.isConfirmed) {
         const submitData = { 
@@ -608,18 +599,11 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
           ...totals
         };
         
-        console.log('Calling onSubmit with data:', submitData);
         onSubmit(submitData);
-        console.log('Showing success message...');
         await AlertService.success('Devis créé', 'Le devis a été créé avec succès.');
-      } else {
-        console.log('User cancelled submission');
       }
-      console.log('Form validation failed');
+    } else {
       // Afficher les erreurs de validation
-      Object.keys(errors).forEach(key => {
-        console.log(`Error in ${key}:`, errors[key]);
-      });
     }
   };
 

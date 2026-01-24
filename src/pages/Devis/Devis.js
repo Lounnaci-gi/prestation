@@ -15,11 +15,8 @@ const Devis = () => {
 
   const handleCreateDevis = async (devisData) => {
     try {
-      console.log('Données envoyées au backend:', devisData);
       // Appeler l'API pour créer le devis
       const result = await createDevis(devisData);
-      
-      console.log('Réponse du backend:', result);
       
       // Rafraîchir la liste des devis
       // Pour simplifier, on va juste ajouter le nouveau devis à la liste locale
@@ -40,21 +37,16 @@ const Devis = () => {
       // Show success message
       await AlertService.success('Devis créé', 'Le devis a été créé avec succès dans la base de données!');
     } catch (error) {
-      console.error('Erreur lors de la création du devis:', error);
-      console.error('Détails de l\'erreur:', error);
       await AlertService.error('Erreur', error.error || 'Une erreur est survenue lors de la création du devis');
     }
   };
   
   const handleUpdateDevis = async (devisData) => {
     try {
-      console.log('Données envoyées au backend pour mise à jour:', devisData);
       // Appeler l'API pour mettre à jour le devis
       // Extraire l'ID du devis à partir des données originales ou des nouvelles données
       const devisId = editingDevis.DevisID || editingDevis.id;
       const result = await updateDevis(devisId, devisData);
-      
-      console.log('Réponse du backend:', result);
       
       // Rafraîchir la liste des devis
       await loadDevis();
@@ -65,8 +57,6 @@ const Devis = () => {
       // Show success message
       await AlertService.success('Devis mis à jour', 'Le devis a été mis à jour avec succès dans la base de données!');
     } catch (error) {
-      console.error('Erreur lors de la mise à jour du devis:', error);
-      console.error('Détails de l\'erreur:', error);
       await AlertService.error('Erreur', error.error || 'Une erreur est survenue lors de la mise à jour du devis');
     }
   };
@@ -88,7 +78,6 @@ const Devis = () => {
       
       setDevisList(formattedDevis);
     } catch (error) {
-      console.error('Erreur lors du chargement des devis:', error);
       // En cas d'erreur, on affiche quand même un message
       AlertService.error('Erreur', 'Impossible de charger les devis');
     } finally {
@@ -102,7 +91,6 @@ const Devis = () => {
 
   const handleEditDevis = async (devis) => {
     try {
-      console.log('Données reçues pour édition:', devis); // Pour déboguer
       
       // Vérifier que l'argument n'est pas undefined
       if (!devis) {
@@ -127,7 +115,6 @@ const Devis = () => {
         await AlertService.error('Erreur', 'Impossible de charger les détails du devis');
       }
     } catch (error) {
-      console.error('Erreur lors du chargement du devis pour édition:', error);
       await AlertService.error('Erreur', 'Impossible de charger les détails du devis');
     }
   };
@@ -160,10 +147,6 @@ const Devis = () => {
       await AlertService.success('Devis supprimé', 'Le devis a été supprimé avec succès');
     } catch (error) {
       // Log l'erreur pour débogage
-      console.log('Status:', error.response?.status);
-      console.log('Data:', error.response?.data);
-      console.log('Error message:', error.message);
-      console.log('Full error:', error);
       
       // Si le devis est déjà supprimé, on reçoit un objet avec error: 'Devis non trouvé'
       // ou une erreur 404
@@ -173,7 +156,6 @@ const Devis = () => {
         await AlertService.success('Devis supprimé', 'Le devis a déjà été supprimé');
       } else {
         // Pour les autres erreurs, afficher le message d'erreur
-        console.error('Erreur lors de la suppression du devis:', error);
         const errorMessage = error.response?.data?.error || error.error || 'Une erreur est survenue lors de la suppression du devis';
         await AlertService.error('Erreur', errorMessage);
         return; // Ne pas recharger la liste en cas d'erreur

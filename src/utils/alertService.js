@@ -112,13 +112,11 @@ const AlertService = {
     // Protection temporelle : ignorer les appels trop rapprochés
     const now = Date.now();
     if (now - lastAlertTime < 200) {
-      console.log('Alerte ignorée : trop rapprochée dans le temps');
       return { isConfirmed: false };
     }
     
     // Protection contre les appels multiples
     if (isProcessingAlert) {
-      console.log('Alerte ignorée : déjà en cours de traitement');
       return { isConfirmed: false };
     }
     

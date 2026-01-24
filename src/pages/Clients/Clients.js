@@ -29,7 +29,6 @@ const Clients = () => {
       
       setClients(formattedClients);
     } catch (error) {
-      console.error('Erreur lors du chargement des clients:', error);
       await AlertService.error('Erreur', 'Impossible de charger la liste des clients');
     } finally {
       setLoading(false);

@@ -14,7 +14,6 @@ export const createDevis = async (devisData) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Erreur lors de la création du devis:', error);
     throw error.response?.data || { error: 'Erreur serveur lors de la création du devis' };
   }
 };
@@ -27,7 +26,6 @@ export const getAllDevis = async () => {
     const response = await axios.get(`${API_BASE_URL}/devis`);
     return response.data;
   } catch (error) {
-    console.error('Erreur lors de la récupération des devis:', error);
     throw error.response?.data || { error: 'Erreur serveur lors de la récupération des devis' };
   }
 };
@@ -44,7 +42,6 @@ export const updateDevis = async (id, devisData) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Erreur lors de la mise à jour du devis:', error);
     throw error.response?.data || { error: 'Erreur serveur lors de la mise à jour du devis' };
   }
 };
@@ -57,7 +54,6 @@ export const getDevisById = async (id) => {
     const response = await axios.get(`${API_BASE_URL}/devis/${id}`);
     return response.data;
   } catch (error) {
-    console.error('Erreur lors de la récupération du devis:', error);
     throw error.response?.data || { error: 'Erreur serveur lors de la récupération du devis' };
   }
 };
@@ -70,7 +66,6 @@ export const deleteDevis = async (id) => {
     const response = await axios.delete(`${API_BASE_URL}/devis/${id}`);
     return response.data;
   } catch (error) {
-    console.error('Erreur lors de la suppression du devis:', error);
     throw error.response?.data || { error: 'Erreur serveur lors de la suppression du devis' };
   }
 };

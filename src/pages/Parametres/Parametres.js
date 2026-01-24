@@ -2,12 +2,53 @@ import React, { useState, useEffect } from 'react';
 import Card from '../../components/Card';
 import AlertService from '../../utils/alertService';
 import { getAllTarifs, updateTarif, deleteTarif } from '../../api/tarifsApi';
+import { getParametresEntreprise, updateParametresEntreprise } from '../../api/parametresEntrepriseApi';
 import './Parametres.css';
 
 const Parametres = () => {
   const [tarifs, setTarifs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // État pour Paramètres Entreprise
+  const [parametresEntreprise, setParametresEntreprise] = useState({
+    ParamID: null,
+    NomEntreprise: '',
+    FormeJuridique: '',
+    NumeroRegistreCommerce: '',
+    NumeroIdentificationFiscale: '',
+    NumeroArticleImposition: '',
+    CapitalSocial: '',
+    AdresseSiegeSocial: '',
+    Wilaya: '',
+    CodePostal: '',
+    Commune: '',
+    TelephonePrincipal: '',
+    TelephoneSecondaire: '',
+    Fax: '',
+    EmailPrincipal: '',
+    EmailComptabilite: '',
+    SiteWeb: '',
+    NomBanque: '',
+    CodeBanque: '',
+    CodeAgence: '',
+    NumeroCompte: '',
+    CleRIB: '',
+    IBAN: '',
+    PrefixeEntreprise: 'ENT',
+    ExerciceComptable: new Date().getFullYear(),
+    RegimeTVA: 'REEL_NORMAL',
+    LogoPath: '',
+    CachetPath: '',
+    SignaturePath: '',
+    MentionsLegalesDevis: '',
+    MentionsLegalesFacture: '',
+    ConditionsGeneralesVente: '',
+    PiedDePageDevis: '',
+    PiedDePageFacture: ''
+  });
+
+  const [savingEntreprise, setSavingEntreprise] = useState(false);
 
   const [newTarif, setNewTarif] = useState({
     typePrestation: '',
@@ -50,9 +91,16 @@ const Parametres = () => {
         }));
         
         setTarifs(uiFormatTarifs);
+        
+        // Charger les paramètres entreprise
+        const parametres = await getParametresEntreprise();
+        if (parametres) {
+          setParametresEntreprise(parametres);
+        }
+        
         setLoading(false);
       } catch (err) {
-        setError('Erreur lors du chargement des tarifs');
+        setError('Erreur lors du chargement des données');
         setLoading(false);
       }
     };
@@ -95,6 +143,58 @@ const Parametres = () => {
         dateDebut: new Date().toISOString().split('T')[0]
       }));
     }
+  };
+
+  // Fonction pour mettre à jour les paramètres entreprise
+  const handleSaveParametresEntreprise = async () => {
+    // Vérifier les champs obligatoires
+    if (!parametresEntreprise.NomEntreprise.trim() || 
+        !parametresEntreprise.AdresseSiegeSocial.trim() || 
+        !parametresEntreprise.TelephonePrincipal.trim() || 
+        !parametresEntreprise.EmailPrincipal.trim()) {
+      await AlertService.warning('Champs manquants', 'Veuillez remplir tous les champs obligatoires (*).', 'OK');
+      return;
+    }
+
+    // Demander une confirmation avant de sauvegarder
+    const result = await AlertService.confirm(
+      'Confirmation',
+      'Êtes-vous sûr de vouloir enregistrer ces paramètres entreprise ?',
+      'Enregistrer',
+      'Annuler'
+    );
+
+    if (!result.isConfirmed) {
+      return; // Annuler si l'utilisateur clique sur "Annuler"
+    }
+
+    setSavingEntreprise(true);
+    try {
+      const result = await updateParametresEntreprise(parametresEntreprise);
+      
+      if (result) {
+        setParametresEntreprise(result);
+        await AlertService.success(
+          '✓ Succès',
+          'Les paramètres de l\'entreprise ont été sauvegardés avec succès !'
+        );
+      }
+    } catch (error) {
+      await AlertService.error(
+        '✗ Erreur',
+        `Impossible de sauvegarder les paramètres: ${error.message}`
+      );
+    } finally {
+      setSavingEntreprise(false);
+    }
+  };
+
+  // Fonction pour mettre à jour un champ des paramètres entreprise
+  const handleChangeParametreEntreprise = (fieldName, value) => {
+    setParametresEntreprise(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
   };
 
   const handleAddTarif = async () => {
@@ -353,7 +453,425 @@ const Parametres = () => {
         <h1 className="page-title">Paramètres</h1>
         <p className="page-subtitle">Gestion des paramètres de l'application</p>
       </div>
-  
+
+      {/* CARD PARAMÈTRES ENTREPRISE */}
+      <Card title="Paramètres Entreprise" style={{ marginTop: '1rem' }}>
+        <div className="entreprise-section">
+          <div className="form-section">
+            <h4>Informations Générales</h4>
+            <div className="form-grid">
+              <div className="setting-item">
+                <label className="setting-label">Nom de l'entreprise <span style={{color: 'red'}}>*</span></label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.NomEntreprise}
+                  onChange={(e) => handleChangeParametreEntreprise('NomEntreprise', e.target.value)}
+                  placeholder="Nom de l'entreprise"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Forme Juridique</label>
+                <select 
+                  className="setting-input"
+                  value={parametresEntreprise.FormeJuridique || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('FormeJuridique', e.target.value)}
+                >
+                  <option value="">Sélectionner...</option>
+                  <option value="SARL">SARL</option>
+                  <option value="SPA">SPA</option>
+                  <option value="EURL">EURL</option>
+                  <option value="SARL-U">SARL-U</option>
+                  <option value="PNC">PNC</option>
+                </select>
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Registre de Commerce</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.NumeroRegistreCommerce || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('NumeroRegistreCommerce', e.target.value)}
+                  placeholder="RC"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Numéro d'Identification Fiscale</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.NumeroIdentificationFiscale || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('NumeroIdentificationFiscale', e.target.value)}
+                  placeholder="NIF"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">N° Article d'Imposition</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.NumeroArticleImposition || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('NumeroArticleImposition', e.target.value)}
+                  placeholder="Article d'imposition"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Capital Social (DZD)</label>
+                <input 
+                  type="number" 
+                  className="setting-input" 
+                  value={parametresEntreprise.CapitalSocial || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('CapitalSocial', e.target.value)}
+                  placeholder="Capital social"
+                  step="0.01"
+                />
+              </div>
+
+              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
+                <label className="setting-label">Adresse du Siège Social <span style={{color: 'red'}}>*</span></label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.AdresseSiegeSocial}
+                  onChange={(e) => handleChangeParametreEntreprise('AdresseSiegeSocial', e.target.value)}
+                  placeholder="Adresse complète"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Wilaya</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.Wilaya || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('Wilaya', e.target.value)}
+                  placeholder="Wilaya"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Code Postal</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.CodePostal || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('CodePostal', e.target.value)}
+                  placeholder="Code postal"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Commune</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.Commune || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('Commune', e.target.value)}
+                  placeholder="Commune"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h4>Informations de Contact</h4>
+            <div className="form-grid">
+              <div className="setting-item">
+                <label className="setting-label">Téléphone Principal <span style={{color: 'red'}}>*</span></label>
+                <input 
+                  type="tel" 
+                  className="setting-input" 
+                  value={parametresEntreprise.TelephonePrincipal}
+                  onChange={(e) => handleChangeParametreEntreprise('TelephonePrincipal', e.target.value)}
+                  placeholder="+213 xxx xxxx xxx"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Téléphone Secondaire</label>
+                <input 
+                  type="tel" 
+                  className="setting-input" 
+                  value={parametresEntreprise.TelephoneSecondaire || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('TelephoneSecondaire', e.target.value)}
+                  placeholder="Téléphone secondaire"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Fax</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.Fax || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('Fax', e.target.value)}
+                  placeholder="Fax"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Email Principal <span style={{color: 'red'}}>*</span></label>
+                <input 
+                  type="email" 
+                  className="setting-input" 
+                  value={parametresEntreprise.EmailPrincipal}
+                  onChange={(e) => handleChangeParametreEntreprise('EmailPrincipal', e.target.value)}
+                  placeholder="contact@entreprise.com"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Email Comptabilité</label>
+                <input 
+                  type="email" 
+                  className="setting-input" 
+                  value={parametresEntreprise.EmailComptabilite || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('EmailComptabilite', e.target.value)}
+                  placeholder="comptabilite@entreprise.com"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Site Web</label>
+                <input 
+                  type="url" 
+                  className="setting-input" 
+                  value={parametresEntreprise.SiteWeb || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('SiteWeb', e.target.value)}
+                  placeholder="www.entreprise.com"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h4>Informations Bancaires</h4>
+            <div className="form-grid">
+              <div className="setting-item">
+                <label className="setting-label">Nom de la Banque</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.NomBanque || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('NomBanque', e.target.value)}
+                  placeholder="Nom de la banque"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Code Banque</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.CodeBanque || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('CodeBanque', e.target.value)}
+                  placeholder="Code banque"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Code Agence</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.CodeAgence || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('CodeAgence', e.target.value)}
+                  placeholder="Code agence"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Numéro de Compte</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.NumeroCompte || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('NumeroCompte', e.target.value)}
+                  placeholder="Numéro de compte"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Clé RIB</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.CleRIB || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('CleRIB', e.target.value)}
+                  placeholder="Clé RIB"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">IBAN</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.IBAN || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('IBAN', e.target.value)}
+                  placeholder="IBAN"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h4>Paramètres Comptables et Administratifs</h4>
+            <div className="form-grid">
+              <div className="setting-item">
+                <label className="setting-label">Préfixe Entreprise</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.PrefixeEntreprise || 'ENT'}
+                  onChange={(e) => handleChangeParametreEntreprise('PrefixeEntreprise', e.target.value)}
+                  placeholder="Préfixe (ex: ENT)"
+                  maxLength="10"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Exercice Comptable</label>
+                <input 
+                  type="number" 
+                  className="setting-input" 
+                  value={parametresEntreprise.ExerciceComptable || new Date().getFullYear()}
+                  onChange={(e) => handleChangeParametreEntreprise('ExerciceComptable', parseInt(e.target.value))}
+                  placeholder="Année"
+                />
+              </div>
+
+              <div className="setting-item">
+                <label className="setting-label">Régime TVA</label>
+                <select 
+                  className="setting-input"
+                  value={parametresEntreprise.RegimeTVA || 'REEL_NORMAL'}
+                  onChange={(e) => handleChangeParametreEntreprise('RegimeTVA', e.target.value)}
+                >
+                  <option value="REEL_NORMAL">Réel Normal</option>
+                  <option value="REEL_SIMPLIFIE">Réel Simplifié</option>
+                  <option value="FORFAIT">Forfait</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h4>Chemins des Ressources (Logos, Signatures, etc.)</h4>
+            <div className="form-grid">
+              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
+                <label className="setting-label">Chemin du Logo</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.LogoPath || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('LogoPath', e.target.value)}
+                  placeholder="/images/logo.png"
+                />
+              </div>
+
+              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
+                <label className="setting-label">Chemin du Cachet</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.CachetPath || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('CachetPath', e.target.value)}
+                  placeholder="/images/cachet.png"
+                />
+              </div>
+
+              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
+                <label className="setting-label">Chemin de la Signature</label>
+                <input 
+                  type="text" 
+                  className="setting-input" 
+                  value={parametresEntreprise.SignaturePath || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('SignaturePath', e.target.value)}
+                  placeholder="/images/signature.png"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h4>Textes Personnalisables pour Documents</h4>
+            <div className="form-grid">
+              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
+                <label className="setting-label">Mentions Légales (Devis)</label>
+                <textarea 
+                  className="setting-input textarea-input" 
+                  value={parametresEntreprise.MentionsLegalesDevis || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('MentionsLegalesDevis', e.target.value)}
+                  placeholder="Mentions légales pour les devis"
+                  rows="3"
+                />
+              </div>
+
+              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
+                <label className="setting-label">Mentions Légales (Facture)</label>
+                <textarea 
+                  className="setting-input textarea-input" 
+                  value={parametresEntreprise.MentionsLegalesFacture || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('MentionsLegalesFacture', e.target.value)}
+                  placeholder="Mentions légales pour les factures"
+                  rows="3"
+                />
+              </div>
+
+              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
+                <label className="setting-label">Conditions Générales de Vente</label>
+                <textarea 
+                  className="setting-input textarea-input" 
+                  value={parametresEntreprise.ConditionsGeneralesVente || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('ConditionsGeneralesVente', e.target.value)}
+                  placeholder="Conditions générales de vente"
+                  rows="4"
+                />
+              </div>
+
+              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
+                <label className="setting-label">Pied de Page (Devis)</label>
+                <textarea 
+                  className="setting-input textarea-input" 
+                  value={parametresEntreprise.PiedDePageDevis || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('PiedDePageDevis', e.target.value)}
+                  placeholder="Pied de page pour les devis"
+                  rows="3"
+                />
+              </div>
+
+              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
+                <label className="setting-label">Pied de Page (Facture)</label>
+                <textarea 
+                  className="setting-input textarea-input" 
+                  value={parametresEntreprise.PiedDePageFacture || ''}
+                  onChange={(e) => handleChangeParametreEntreprise('PiedDePageFacture', e.target.value)}
+                  placeholder="Pied de page pour les factures"
+                  rows="3"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-actions">
+            <button 
+              className="btn btn-primary" 
+              onClick={handleSaveParametresEntreprise}
+              disabled={savingEntreprise}
+            >
+              {savingEntreprise ? 'Sauvegarde en cours...' : '💾 Sauvegarder les paramètres'}
+            </button>
+          </div>
+        </div>
+      </Card>
+
+      {/* CARD TARIFS ET TAXES */}
       <Card title="Tarifs et Taxes" style={{ marginTop: '1rem' }}>
         <div className="tarifs-section">
           <div className="tarif-form">

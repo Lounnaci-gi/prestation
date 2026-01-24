@@ -10,7 +10,6 @@ export const getAllClients = async () => {
     const response = await axios.get(`${API_BASE_URL}/clients`);
     return response.data;
   } catch (error) {
-    console.error('Erreur lors de la récupération des clients:', error);
     throw error.response?.data || { error: 'Erreur serveur lors de la récupération des clients' };
   }
 };
@@ -27,7 +26,6 @@ export const createClient = async (clientData) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Erreur lors de la création du client:', error);
     throw error.response?.data || { error: 'Erreur serveur lors de la création du client' };
   }
 };

@@ -10,23 +10,31 @@
 .modern-input textarea,
 .modern-input select {
   width: 100%;
-  padding: 0.875rem 1.25rem;
-  border: 1px solid var(--secondary-300);
-  border-radius: 0.625rem;
-  font-size: 0.9rem;
-  background: #ffffff;
-  transition: all 0.3s ease;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.025);
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1.5px solid var(--secondary-300);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  background: white;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-inner);
+  font-family: var(--font-sans);
+  line-height: var(--line-height-normal);
+}
+
+.modern-input input:hover,
+.modern-input textarea:hover,
+.modern-input select:hover {
+  border-color: var(--secondary-400);
 }
 
 .modern-input input:focus,
 .modern-input textarea:focus,
 .modern-input select:focus {
   outline: none;
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), inset 0 1px 2px rgba(0, 0, 0, 0.025);
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15), var(--shadow-inner);
   background: #f9fafb;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .modern-input input:disabled,
@@ -45,20 +53,21 @@
 .floating-label input,
 .floating-label textarea,
 .floating-label select {
-  padding-top: 1.25rem;
-  padding-bottom: 0.5rem;
+  padding-top: var(--spacing-5);
+  padding-bottom: var(--spacing-2);
 }
 
 .floating-label label {
   position: absolute;
-  top: 0.875rem;
-  left: 1.25rem;
-  font-size: 0.9rem;
+  top: var(--spacing-3);
+  left: var(--spacing-5);
+  font-size: var(--text-sm);
   color: var(--secondary-500);
-  transition: all 0.3s ease;
+  transition: all var(--transition-base);
   pointer-events: none;
   background: white;
-  padding: 0 0.25rem;
+  padding: 0 var(--spacing-1);
+  font-weight: var(--font-normal);
 }
 
 .floating-label input:focus + label,
@@ -66,20 +75,22 @@
 .floating-label select:focus + label,
 .floating-label input:not(:placeholder-shown) + label,
 .floating-label textarea:not(:placeholder-shown) + label {
-  top: 0.25rem;
-  left: 1.25rem;
-  font-size: 0.75rem;
-  color: var(--primary-600);
-  font-weight: 500;
+  top: var(--spacing-1);
+  left: var(--spacing-5);
+  font-size: var(--text-xs);
+  color: #0ea5e9;
+  font-weight: var(--font-medium);
+  background: white;
 }
 
 /* Style pour les checkboxes modernes */
 .modern-checkbox {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--spacing-2);
   cursor: pointer;
   position: relative;
+  user-select: none;
 }
 
 .modern-checkbox input[type="checkbox"] {
@@ -93,25 +104,28 @@
   width: 1.25rem;
   height: 1.25rem;
   border: 2px solid var(--secondary-400);
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: all var(--transition-base);
   background: white;
+  flex-shrink: 0;
 }
 
 .modern-checkbox input[type="checkbox"]:checked + .checkmark {
-  background: var(--primary-500);
-  border-color: var(--primary-500);
+  background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+  border-color: #0284c7;
+  box-shadow: var(--shadow-md);
 }
 
 .modern-checkbox .checkmark::after {
   content: "✓";
   color: white;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  font-weight: var(--font-bold);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--transition-base);
 }
 
 .modern-checkbox input[type="checkbox"]:checked + .checkmark::after {
@@ -119,16 +133,17 @@
 }
 
 .modern-checkbox input[type="checkbox"]:focus + .checkmark {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
 }
 
 /* Style pour les radios modernes */
 .modern-radio {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--spacing-2);
   cursor: pointer;
   position: relative;
+  user-select: none;
 }
 
 .modern-radio input[type="radio"] {
@@ -146,22 +161,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: all var(--transition-base);
   background: white;
+  flex-shrink: 0;
 }
 
 .modern-radio .radiomark::before {
   content: "";
   width: 0.625rem;
   height: 0.625rem;
-  background: var(--primary-500);
+  background: #0ea5e9;
   border-radius: 50%;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--transition-base);
+  box-shadow: 0 0 0 2px white;
 }
 
 .modern-radio input[type="radio"]:checked + .radiomark {
-  border-color: var(--primary-500);
+  border-color: #0ea5e9;
+  box-shadow: var(--shadow-md);
 }
 
 .modern-radio input[type="radio"]:checked + .radiomark::before {
@@ -169,14 +187,14 @@
 }
 
 .modern-radio input[type="radio"]:focus + .radiomark {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
 }
 
 /* Boutons radio group */
 .radio-group {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--spacing-3);
 }
 
 /* Style pour les selects modernes */
@@ -189,67 +207,71 @@
   -webkit-appearance: none;
   -moz-appearance: none;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 1.25rem center;
+  background-position: right var(--spacing-5) center;
   background-repeat: no-repeat;
   background-size: 1.5em 1.5em;
   padding-right: 3rem;
 }
 
 .modern-select select:focus {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%233b82f6' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%230ea5e9' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
 }
 
 /* Zone de téléchargement de fichiers */
 .file-upload-area {
   border: 2px dashed var(--secondary-300);
-  border-radius: 0.625rem;
-  padding: 2rem;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-8);
   text-align: center;
-  transition: all 0.3s ease;
+  transition: all var(--transition-base);
   background: var(--secondary-50);
   cursor: pointer;
 }
 
 .file-upload-area:hover {
-  border-color: var(--primary-400);
-  background: var(--primary-50);
+  border-color: #38bdf8;
+  background: #e0f2fe;
 }
 
 .file-upload-area.drag-over {
-  border-color: var(--primary-500);
-  background: var(--primary-100);
+  border-color: #0ea5e9;
+  background: #e0f2fe;
+  box-shadow: var(--shadow-primary);
 }
 
 .file-upload-icon {
   font-size: 2.5rem;
-  color: var(--primary-400);
-  margin-bottom: 0.75rem;
+  color: #0ea5e9;
+  margin-bottom: var(--spacing-3);
 }
 
 .file-upload-text {
   color: var(--secondary-600);
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--spacing-2);
+  font-weight: var(--font-medium);
 }
 
 .file-upload-hint {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--secondary-500);
 }
 
 /* Barre de progression */
 .progress-bar {
   width: 100%;
-  height: 0.5rem;
+  height: var(--spacing-1);
   background-color: var(--secondary-200);
-  border-radius: 0.25rem;
+  border-radius: var(--radius-full);
   overflow: hidden;
+  box-shadow: var(--shadow-inner);
 }
 
 .progress-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-400), var(--primary-600));
-  transition: width 0.3s ease;
-  border-radius: 0.25rem;
+  background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+  transition: width var(--transition-slow);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-primary);
 }
 
 /* Champ avec icône */
@@ -259,10 +281,11 @@
 
 .input-with-icon .icon {
   position: absolute;
-  left: 1rem;
+  left: var(--spacing-4);
   top: 50%;
   transform: translateY(-50%);
   color: var(--secondary-500);
+  pointer-events: none;
 }
 
 .input-with-icon input {

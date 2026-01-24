@@ -79,7 +79,6 @@ const UserProfile = () => {
       }
     } catch (err) {
       setError('Erreur de connexion au serveur');
-      console.error('Erreur de mise à jour du profil:', err);
     } finally {
       setLoading(false);
     }
@@ -130,7 +129,6 @@ const UserProfile = () => {
       }
     } catch (err) {
       setError('Erreur de connexion au serveur');
-      console.error('Erreur de changement de mot de passe:', err);
     } finally {
       setLoading(false);
     }

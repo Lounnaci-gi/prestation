@@ -1,42 +1,59 @@
 .input-wrapper {
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
 }
 
 .input-label {
   display: block;
-  margin-bottom: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
+  margin-bottom: var(--spacing-2);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
   color: var(--secondary-700);
+  letter-spacing: -0.3px;
 }
 
 .required {
   color: var(--error-500);
-  margin-left: 0.1875rem;
+  margin-left: var(--spacing-1);
+  font-weight: var(--font-bold);
 }
 
 .input {
   width: 100%;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  border: 1px solid var(--secondary-300);
-  border-radius: 0.375rem;
-  transition: all 0.2s ease;
-  font-family: inherit;
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--text-sm);
+  border: 1.5px solid var(--secondary-300);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+  font-family: var(--font-sans);
   color: var(--secondary-800);
   background-color: white;
+  box-shadow: var(--shadow-inner);
+  line-height: var(--line-height-normal);
+}
+
+.input::placeholder {
+  color: var(--secondary-400);
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--secondary-400);
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15), var(--shadow-inner);
+  background-color: #f9fafb;
+  transform: translateY(-2px);
 }
 
 .input:disabled {
   background-color: var(--secondary-100);
   color: var(--secondary-400);
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .input-error {
@@ -44,13 +61,21 @@
 }
 
 .input-error:focus {
-  border-color: var(--error-500);
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+  border-color: var(--error-600);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15), var(--shadow-inner);
 }
 
 .error-message {
-  display: block;
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  margin-top: var(--spacing-2);
+  font-size: var(--text-xs);
   color: var(--error-600);
+  font-weight: var(--font-medium);
+  gap: var(--spacing-1);
+}
+
+.error-message::before {
+  content: '⚠';
+  font-size: var(--text-sm);
 }
