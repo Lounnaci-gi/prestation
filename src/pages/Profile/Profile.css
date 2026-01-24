@@ -64,6 +64,13 @@
   width: 100%;
 }
 
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
 .form-row {
   display: flex;
   gap: 1.5rem;
@@ -74,29 +81,19 @@
 .form-group {
   flex: 1;
   min-width: 250px;
+  margin-bottom: 0;
 }
 
-.password-section {
-  width: 100%;
+.profile-section {
+  margin-bottom: 1.5rem;
 }
 
-.password-prompt {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 0;
-}
-
-.password-description {
+.password-hint {
   color: #6b7280;
   font-size: 0.875rem;
-  margin: 0;
-  text-align: center;
-}
-
-.password-form {
-  width: 100%;
+  margin: 0 0 1rem 0;
+  font-style: italic;
+  padding-left: 0.5rem;
 }
 
 .form-actions {
@@ -108,11 +105,22 @@
   margin-top: 1rem;
 }
 
-.password-actions {
-  justify-content: space-between;
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1.5rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
 }
 
-.save-button, .save-password-btn {
+.divider {
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 1.5rem 0;
+}
+
+.save-button {
   min-width: 200px;
 }
 
@@ -213,13 +221,13 @@
 }
 
 /* Animation pour les champs */
-.personal-info-form .setting-input,
-.password-form .setting-input {
+.personal-info-form .input,
+.personal-info-form .setting-input {
   transition: all 0.2s ease-in-out;
 }
 
-.personal-info-form .setting-input:focus,
-.password-form .setting-input:focus {
+.personal-info-form .input:focus,
+.personal-info-form .setting-input:focus {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(3, 105, 161, 0.15);
 }

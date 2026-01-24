@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import Card from '../../components/Card';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
+import Swal from 'sweetalert2';
 import AlertService from '../../utils/alertService';
 import './Profile.css';
 
@@ -19,7 +20,6 @@ const Profile = () => {
     newPassword: '',
     confirmNewPassword: ''
   });
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -53,90 +53,116 @@ const Profile = () => {
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
+    
+    // Afficher une boîte de dialogue de confirmation
+    const result = await Swal.fire({
+      title: 'Confirmation',
+      text: 'Voulez-vous enregistrer les modifications ?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Oui',
+      cancelButtonText: 'Non',
+      reverseButtons: true
+    });
+    
+    if (!result.isConfirmed) {
+      // L'utilisateur a annulé, ne rien faire
+      return;
+    }
+    
     setLoading(true);
     setMessage('');
     setError('');
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/users/profile?userId=${user.UserID}`, {
+      // Mettre à jour les informations du profil
+      const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/users/profile?userId=${user.UserID}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          nom: formData.nom,
-          prenom: formData.prenom,
-          email: formData.email,
-          codeUtilisateur: formData.codeUtilisateur
+          nom: formData.nom || '',
+          prenom: formData.prenom || '',
+          email: formData.email || '',
+          codeUtilisateur: formData.codeUtilisateur || ''
         })
       });
 
-      const result = await response.json();
+      const profileResult = await profileResponse.json();
 
-      if (response.ok) {
-        setMessage('Profil mis à jour avec succès!');
+      if (!profileResponse.ok) {
+        throw new Error(profileResult.error || 'Erreur lors de la mise à jour du profil');
+      }
+
+      // Mettre à jour les données utilisateur dans le contexte
+      const updatedUser = { ...user, ...formData };
+      login(updatedUser); // Met à jour le contexte d'authentification
+
+      // Si les champs de mot de passe sont remplis, mettre à jour le mot de passe
+      if (passwordData.newPassword || passwordData.currentPassword || passwordData.confirmNewPassword) {
+        // Vérifier si tous les champs de mot de passe sont remplis
+        if (!passwordData.currentPassword) {
+          setError('Veuillez entrer votre mot de passe actuel');
+          setLoading(false);
+          return;
+        }
         
-        // Mettre à jour les données utilisateur dans le contexte
-        const updatedUser = { ...user, ...formData };
-        login(updatedUser); // Met à jour le contexte d'authentification
-      } else {
-        setError(result.error || 'Erreur lors de la mise à jour du profil');
-      }
-    } catch (err) {
-      setError('Erreur de connexion au serveur');
-      console.error('Erreur de mise à jour du profil:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        if (!passwordData.newPassword) {
+          setError('Veuillez entrer votre nouveau mot de passe');
+          setLoading(false);
+          return;
+        }
+        
+        if (!passwordData.confirmNewPassword) {
+          setError('Veuillez confirmer votre nouveau mot de passe');
+          setLoading(false);
+          return;
+        }
+        
+        // Validation côté client
+        if (passwordData.newPassword !== passwordData.confirmNewPassword) {
+          setError('Les nouveaux mots de passe ne correspondent pas');
+          setLoading(false);
+          return;
+        }
 
-  const handleChangePassword = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage('');
-    setError('');
+        if (passwordData.newPassword.length < 6) {
+          setError('Le nouveau mot de passe doit contenir au moins 6 caractères');
+          setLoading(false);
+          return;
+        }
 
-    // Validation côté client
-    if (passwordData.newPassword !== passwordData.confirmNewPassword) {
-      setError('Les nouveaux mots de passe ne correspondent pas');
-      setLoading(false);
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      setError('Le nouveau mot de passe doit contenir au moins 6 caractères');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/users/change-password?userId=${user.UserID}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword
-        })
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setMessage('Mot de passe mis à jour avec succès!');
-        setPasswordData({
-          currentPassword: '',
-          newPassword: '',
-          confirmNewPassword: ''
+        const passwordResponse = await fetch(`${process.env.REACT_APP_API_URL}/users/change-password?userId=${user.UserID}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            currentPassword: passwordData.currentPassword,
+            newPassword: passwordData.newPassword
+          })
         });
-        setShowPasswordForm(false); // Fermer le formulaire après mise à jour réussie
-      } else {
-        setError(result.error || 'Erreur lors du changement de mot de passe');
+
+        const passwordResult = await passwordResponse.json();
+
+        if (!passwordResponse.ok) {
+          throw new Error(passwordResult.error || 'Erreur lors du changement de mot de passe');
+        }
       }
+
+      setMessage('Profil mis à jour avec succès!');
+      
+      // Réinitialiser les champs de mot de passe après la mise à jour
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmNewPassword: ''
+      });
+      
     } catch (err) {
-      setError('Erreur de connexion au serveur');
-      console.error('Erreur de changement de mot de passe:', err);
+      setError(err.message || 'Erreur de connexion au serveur');
+      console.error('Erreur de mise à jour du profil:', err);
     } finally {
       setLoading(false);
     }
@@ -157,56 +183,98 @@ const Profile = () => {
           <Card title="Informations Personnelles" className="profile-card">
             <div className="card-content">
               <form onSubmit={handleUpdateProfile} className="personal-info-form">
-                <div className="form-row">
-                  <div className="form-group">
-                    <Input
-                      label="Nom"
-                      type="text"
-                      name="nom"
-                      value={formData.nom}
-                      onChange={handleInputChange}
-                      placeholder="Votre nom"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <Input
-                      label="Prénom"
-                      type="text"
-                      name="prenom"
-                      value={formData.prenom}
-                      onChange={handleInputChange}
-                      placeholder="Votre prénom"
-                      required
-                    />
+                <div className="profile-section">
+                  <h3 className="section-title">Informations Personnelles</h3>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <Input
+                        label="Nom"
+                        type="text"
+                        name="nom"
+                        value={formData.nom}
+                        onChange={handleInputChange}
+                        placeholder="Votre nom"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <Input
+                        label="Prénom"
+                        type="text"
+                        name="prenom"
+                        value={formData.prenom}
+                        onChange={handleInputChange}
+                        placeholder="Votre prénom"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <Input
+                        label="Email"
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        placeholder="votre.email@exemple.com"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <Input
+                        label="Identifiant (Nom d'utilisateur)"
+                        type="text"
+                        name="codeUtilisateur"
+                        value={formData.codeUtilisateur}
+                        onChange={handleInputChange}
+                        placeholder="Votre identifiant"
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
                 
-                <div className="form-row">
-                  <div className="form-group">
-                    <Input
-                      label="Email"
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="votre.email@exemple.com"
-                      required
-                    />
+                <div className="divider"></div>
+                
+                <div className="profile-section">
+                  <h3 className="section-title">Sécurité du Compte</h3>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <Input
+                        label="Mot de passe actuel"
+                        type="password"
+                        name="currentPassword"
+                        value={passwordData.currentPassword}
+                        onChange={handlePasswordChange}
+                        placeholder="Entrez votre mot de passe actuel"
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <Input
+                        label="Nouveau mot de passe"
+                        type="password"
+                        name="newPassword"
+                        value={passwordData.newPassword}
+                        onChange={handlePasswordChange}
+                        placeholder="Entrez votre nouveau mot de passe"
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <Input
+                        label="Confirmer le nouveau mot de passe"
+                        type="password"
+                        name="confirmNewPassword"
+                        value={passwordData.confirmNewPassword}
+                        onChange={handlePasswordChange}
+                        placeholder="Confirmez votre nouveau mot de passe"
+                      />
+                    </div>
                   </div>
-                  
-                  <div className="form-group">
-                    <Input
-                      label="Identifiant (Nom d'utilisateur)"
-                      type="text"
-                      name="codeUtilisateur"
-                      value={formData.codeUtilisateur}
-                      onChange={handleInputChange}
-                      placeholder="Votre identifiant"
-                      required
-                    />
-                  </div>
+                  <p className="password-hint">Laissez les champs de mot de passe vides si vous ne souhaitez pas le modifier</p>
                 </div>
                 
                 <div className="form-actions">
@@ -220,94 +288,6 @@ const Profile = () => {
                   </Button>
                 </div>
               </form>
-            </div>
-          </Card>
-
-          <Card title="Sécurité du Compte" className="security-card">
-            <div className="card-content">
-              <div className="password-section">
-                {!showPasswordForm ? (
-                  <div className="password-prompt">
-                    <p className="password-description">Souhaitez-vous modifier votre mot de passe ?</p>
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      onClick={() => setShowPasswordForm(true)}
-                      className="change-password-btn"
-                    >
-                      Changer le mot de passe
-                    </Button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleChangePassword} className="password-form">
-                    <div className="form-row">
-                      <div className="form-group">
-                        <Input
-                          label="Mot de passe actuel"
-                          type="password"
-                          name="currentPassword"
-                          value={passwordData.currentPassword}
-                          onChange={handlePasswordChange}
-                          placeholder="Entrez votre mot de passe actuel"
-                          required
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="form-row">
-                      <div className="form-group">
-                        <Input
-                          label="Nouveau mot de passe"
-                          type="password"
-                          name="newPassword"
-                          value={passwordData.newPassword}
-                          onChange={handlePasswordChange}
-                          placeholder="Entrez votre nouveau mot de passe"
-                          required
-                        />
-                      </div>
-                      
-                      <div className="form-group">
-                        <Input
-                          label="Confirmer le nouveau mot de passe"
-                          type="password"
-                          name="confirmNewPassword"
-                          value={passwordData.confirmNewPassword}
-                          onChange={handlePasswordChange}
-                          placeholder="Confirmez votre nouveau mot de passe"
-                          required
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="form-actions password-actions">
-                      <Button 
-                        type="button" 
-                        variant="secondary" 
-                        onClick={() => {
-                          setShowPasswordForm(false);
-                          setPasswordData({
-                            currentPassword: '',
-                            newPassword: '',
-                            confirmNewPassword: ''
-                          });
-                        }}
-                        className="cancel-btn"
-                      >
-                        Annuler
-                      </Button>
-                      <Button 
-                        type="submit" 
-                        variant="primary" 
-                        disabled={loading}
-                        className="save-password-btn"
-                      >
-                        {loading ? 'Mise à jour...' : 'Enregistrer le mot de passe'}
-                      </Button>
-                    </div>
-                  </form>
-                )}
-              </div>
             </div>
           </Card>
         </div>

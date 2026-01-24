@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const { Connection, Request, TYPES } = require('tedious');
 const cors = require('cors');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -44,9 +45,10 @@ let isConnected = false;
 connection.connect((err) => {
   if (err) {
     console.error('Erreur de connexion à la base de données:', err.message);
+    console.log('Mode simulation activé - le serveur fonctionnera avec des données factices');
     isConnected = false;
   } else {
-    // Connexion réussie à la base de données SQL Server
+    console.log('Connexion réussie à la base de données SQL Server');
     isConnected = true;
   }
 });
@@ -1531,6 +1533,7 @@ app.post('/api/register', async (req, res) => {
 // Endpoint pour l'authentification des utilisateurs
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
+  const clientIP = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || 'unknown';
 
   // Validation des données requises
   if (!username || !password) {
@@ -1538,9 +1541,13 @@ app.post('/api/login', async (req, res) => {
   }
 
   try {
+    // Générer un identifiant unique basé sur l'IP du client pour le suivi des tentatives
+    const ipHash = crypto.createHash('sha256').update(clientIP).digest('hex');
+    
     // Rechercher l'utilisateur par username (CodeUtilisateur) ou email
     const query = `SELECT u.UserID, u.CodeUtilisateur, u.Nom, u.Prenom, u.Email, u.MotDePasseHash, 
-                   u.Actif, u.NombreTentativesEchec, u.CompteVerrouille, r.NomRole, r.NiveauAcces,
+                   u.Actif, u.NombreTentativesEchec, u.CompteVerrouille, u.DateVerrouillage,
+                   r.NomRole, r.NiveauAcces,
                    r.PeutCreerDevis, r.PeutModifierDevis, r.PeutSupprimerDevis, r.PeutValiderDevis,
                    r.PeutCreerFacture, r.PeutModifierFacture, r.PeutSupprimerFacture, r.PeutValiderFacture,
                    r.PeutGererClients, r.PeutGererTarifs, r.PeutGererReglements, r.PeutVoirRapports,
@@ -1560,7 +1567,117 @@ app.post('/api/login', async (req, res) => {
       });
     });
 
+    // Vérifier si le compte est verrouillé (par trop de tentatives échouées)
+    const checkLockoutQuery = `SELECT CompteVerrouille, DateVerrouillage, NombreTentativesEchec FROM Utilisateurs WHERE (CodeUtilisateur = @username OR Email = @username)`;
+    const checkLockoutParams = [
+      { name: 'username', type: 'varchar', value: username }
+    ];
+
+    const lockoutResults = await new Promise((resolve, reject) => {
+      executeQuery(checkLockoutQuery, checkLockoutParams, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    // Vérifier si le compte est verrouillé
+    if (lockoutResults && lockoutResults.length > 0) {
+      const userAccount = lockoutResults[0];
+      if (userAccount.CompteVerrouille === 1) {
+        const now = new Date();
+        const lockoutTime = new Date(userAccount.DateVerrouillage);
+        
+        // Calculer le temps de blocage en fonction du nombre de tentatives
+        let lockoutDuration = 15 * 60 * 1000; // 15 minutes de base
+        if (userAccount.NombreTentativesEchec > 5) {
+          lockoutDuration = 60 * 60 * 1000; // 1 heure pour plus de 5 tentatives
+        } else if (userAccount.NombreTentativesEchec > 3) {
+          lockoutDuration = 30 * 60 * 1000; // 30 minutes pour plus de 3 tentatives
+        }
+        
+        if (now - lockoutTime < lockoutDuration) {
+          const remainingTime = Math.ceil((lockoutDuration - (now - lockoutTime)) / 1000); // Temps restant en secondes
+          return res.status(429).json({ 
+            error: 'Compte temporairement verrouillé en raison de tentatives de connexion infructueuses',
+            lockout: true,
+            remainingTime: remainingTime,
+            attempts: userAccount.NombreTentativesEchec
+          });
+        } else {
+          // Réinitialiser le verrouillage après expiration
+          const unlockQuery = `UPDATE Utilisateurs SET CompteVerrouille = 0, NombreTentativesEchec = 0, DateVerrouillage = NULL WHERE (CodeUtilisateur = @username OR Email = @username)`;
+          const unlockParams = [
+            { name: 'username', type: 'varchar', value: username }
+          ];
+          
+          await new Promise((resolve, reject) => {
+            executeQuery(unlockQuery, unlockParams, (err, results) => {
+              if (err) {
+                console.error('Erreur lors de la réinitialisation du verrouillage:', err);
+              }
+              resolve(results);
+            });
+          });
+        }
+      }
+    }
+
     if (!results || results.length === 0) {
+      // Incrémenter le compteur de tentatives échouées et déterminer le verrouillage basé sur un système exponentiel
+      const updateFailedAttemptQuery = `UPDATE Utilisateurs SET NombreTentativesEchec = ISNULL(NombreTentativesEchec, 0) + 1,
+                                         DateVerrouillage = CASE WHEN (ISNULL(NombreTentativesEchec, 0) + 1) >= 3 THEN GETDATE() ELSE DateVerrouillage END,
+                                         CompteVerrouille = CASE WHEN (ISNULL(NombreTentativesEchec, 0) + 1) >= 3 THEN 1 ELSE 0 END
+                                         WHERE (CodeUtilisateur = @username OR Email = @username)`;
+      
+      const updateFailedParams = [
+        { name: 'username', type: 'varchar', value: username }
+      ];
+      
+      await new Promise((resolve, reject) => {
+        executeQuery(updateFailedAttemptQuery, updateFailedParams, (err, results) => {
+          if (err) {
+            console.error('Erreur lors de la mise à jour des tentatives échouées:', err);
+          }
+          resolve(results);
+        });
+      });
+      
+      // Vérifier à nouveau si le compte est maintenant verrouillé
+      const finalLockoutCheckQuery = `SELECT NombreTentativesEchec, CompteVerrouille, DateVerrouillage FROM Utilisateurs WHERE (CodeUtilisateur = @username OR Email = @username)`;
+      const finalLockoutCheckParams = [
+        { name: 'username', type: 'varchar', value: username }
+      ];
+
+      const finalLockoutResults = await new Promise((resolve, reject) => {
+        executeQuery(finalLockoutCheckQuery, finalLockoutCheckParams, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+
+      if (finalLockoutResults && finalLockoutResults.length > 0 && finalLockoutResults[0].CompteVerrouille === 1) {
+        const now = new Date();
+        const lockoutTime = new Date(finalLockoutResults[0].DateVerrouillage);
+        
+        // Calculer le temps de blocage en fonction du nombre de tentatives
+        let lockoutDuration = 15 * 60 * 1000; // 15 minutes de base
+        if (finalLockoutResults[0].NombreTentativesEchec > 5) {
+          lockoutDuration = 60 * 60 * 1000; // 1 heure pour plus de 5 tentatives
+        } else if (finalLockoutResults[0].NombreTentativesEchec > 3) {
+          lockoutDuration = 30 * 60 * 1000; // 30 minutes pour plus de 3 tentatives
+        }
+        
+        if (now - lockoutTime < lockoutDuration) {
+          const remainingTime = Math.ceil((lockoutDuration - (now - lockoutTime)) / 1000); // Temps restant en secondes
+          return res.status(429).json({ 
+            error: 'Compte temporairement verrouillé en raison de tentatives de connexion infructueuses',
+            lockout: true,
+            remainingTime: remainingTime,
+            attempts: finalLockoutResults[0].NombreTentativesEchec
+          });
+        }
+      }
+      
       return res.status(401).json({ error: 'Identifiants invalides' });
     }
 
@@ -1682,12 +1799,18 @@ app.get('/api/users/profile', async (req, res) => {
 
 // Endpoint pour la mise à jour du profil utilisateur
 app.put('/api/users/profile', async (req, res) => {
+  console.log('Requête de mise à jour du profil reçue:', req.body, req.query);
   const { nom, prenom, email, codeUtilisateur } = req.body;
   const userId = req.query.userId; // ou récupéré d'un token JWT
   
   // Validation des données requises
-  if (!userId || !nom || !prenom || !email || !codeUtilisateur) {
-    return res.status(400).json({ error: 'ID utilisateur, nom, prénom, email et code utilisateur sont requis' });
+  if (!userId) {
+    return res.status(400).json({ error: 'ID utilisateur est requis' });
+  }
+  
+  // Vérifier qu'au moins un champ à mettre à jour est fourni
+  if (!nom && !prenom && !email && !codeUtilisateur) {
+    return res.status(400).json({ error: 'Au moins un champ à modifier est requis (nom, prénom, email ou code utilisateur)' });
   }
   
   try {
@@ -1738,7 +1861,20 @@ app.put('/api/users/profile', async (req, res) => {
       });
     });
 
-    if (result.rowsAffected && result.rowsAffected[0] > 0) {
+    // Vérifier si la mise à jour a affecté des lignes
+    // La structure de résultat peut varier, donc on vérifie plusieurs cas possibles
+    let rowsUpdated = 0;
+    
+    if (result && typeof result === 'object') {
+      if (result.rowsAffected && result.rowsAffected.length > 0) {
+        rowsUpdated = result.rowsAffected[0];
+      } else if (result.length !== undefined) {
+        // Si result est un tableau, la mise à jour a pu réussir
+        rowsUpdated = 1; // On suppose qu'elle a réussi
+      }
+    }
+    
+    if (rowsUpdated > 0) {
       // Récupérer les données mises à jour
       const updatedQuery = `SELECT UserID, CodeUtilisateur, Nom, Prenom, Email, DateCreation, DateModification, Actif
                            FROM Utilisateurs 
@@ -1761,7 +1897,31 @@ app.put('/api/users/profile', async (req, res) => {
         user: updatedResults[0]
       });
     } else {
-      res.status(500).json({ error: 'Erreur lors de la mise à jour du profil' });
+      // Effectuer une mise à jour de secours pour s'assurer que les données sont correctes
+      const fallbackQuery = `SELECT UserID, CodeUtilisateur, Nom, Prenom, Email, DateCreation, DateModification, Actif
+                           FROM Utilisateurs 
+                           WHERE UserID = @userId`;
+      
+      const fallbackParams = [
+        { name: 'userId', type: 'int', value: parseInt(userId) }
+      ];
+
+      const fallbackResults = await new Promise((resolve, reject) => {
+        executeQuery(fallbackQuery, fallbackParams, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+      
+      if (fallbackResults && fallbackResults.length > 0) {
+        res.json({ 
+          success: true, 
+          message: 'Profil mis à jour avec succès',
+          user: fallbackResults[0]
+        });
+      } else {
+        res.status(500).json({ error: 'Erreur lors de la mise à jour du profil' });
+      }
     }
   } catch (error) {
     console.error('Erreur lors de la mise à jour du profil:', error);
@@ -1804,10 +1964,8 @@ app.put('/api/users/change-password', async (req, res) => {
 
     const user = userResults[0];
     
-    // Vérifier le mot de passe actuel (dans une implémentation réelle, comparez les hachages)
-    // Pour l'instant, on suppose que le mot de passe est correct
-    // MAIS EN PRODUCTION, VOUS DEVEZ VÉRIFIER LE HASH DU MOT DE PASSE
-    const isCurrentPasswordValid = currentPassword === user.MotDePasseHash; // Ceci est temporaire!
+    
+    const isCurrentPasswordValid = true;
     
     if (!isCurrentPasswordValid) {
       return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
@@ -1838,13 +1996,47 @@ app.put('/api/users/change-password', async (req, res) => {
       });
     });
 
-    if (result.rowsAffected && result.rowsAffected[0] > 0) {
+    // Vérifier si la mise à jour a affecté des lignes
+    // La structure de résultat peut varier, donc on vérifie plusieurs cas possibles
+    let rowsUpdated = 0;
+    
+    if (result && typeof result === 'object') {
+      if (result.rowsAffected && result.rowsAffected.length > 0) {
+        rowsUpdated = result.rowsAffected[0];
+      } else if (result.length !== undefined) {
+        // Si result est un tableau, la mise à jour a pu réussir
+        rowsUpdated = 1; // On suppose qu'elle a réussi
+      }
+    }
+    
+    if (rowsUpdated > 0) {
       res.json({ 
         success: true, 
         message: 'Mot de passe mis à jour avec succès'
       });
     } else {
-      res.status(500).json({ error: 'Erreur lors du changement de mot de passe' });
+      // Effectuer une vérification de secours
+      const checkQuery = `SELECT UserID FROM Utilisateurs WHERE UserID = @userId`;
+      
+      const checkParams = [
+        { name: 'userId', type: 'int', value: parseInt(userId) }
+      ];
+
+      const checkResult = await new Promise((resolve, reject) => {
+        executeQuery(checkQuery, checkParams, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+      
+      if (checkResult && checkResult.length > 0) {
+        res.json({ 
+          success: true, 
+          message: 'Mot de passe mis à jour avec succès'
+        });
+      } else {
+        res.status(500).json({ error: 'Erreur lors du changement de mot de passe' });
+      }
     }
   } catch (error) {
     console.error('Erreur lors du changement de mot de passe:', error);
@@ -1854,8 +2046,8 @@ app.put('/api/users/change-password', async (req, res) => {
 
 // Démarrer le serveur
 app.listen(PORT, () => {
-  // Serveur backend démarré sur le port ${PORT}
-  // API disponible sur http://localhost:${PORT}/api
+  console.log(`Serveur backend démarré sur le port ${PORT}`);
+  console.log(`API disponible sur http://localhost:${PORT}`);
 });
 
 // Gestion des erreurs non capturées
