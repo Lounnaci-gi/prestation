@@ -66,12 +66,12 @@
   cursor: pointer;
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  color: #0ea5e9;
+  color: var(--primary-500);
   transition: all var(--transition-base);
 }
 
 .mobile-menu-button:hover {
-  color: #38bdf8;
+  color: var(--primary-400);
 }
 
 .hamburger-text {

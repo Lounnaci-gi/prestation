@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Card from '../../components/Card';
 import './Dashboard.css';
 
 const Dashboard = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('month');
-
   const stats = [
     {
       title: 'Total Clients',
@@ -28,7 +26,7 @@ const Dashboard = () => {
       change: '-5%',
       trend: 'down',
       icon: '📄',
-      color: '#f59e0b',
+      color: '#3b82f6',
     },
     {
       title: 'Taux de Conversion',
@@ -117,20 +115,20 @@ const Dashboard = () => {
           </div>
           <div className="header-actions">
             <button 
-              className={`period-btn ${selectedPeriod === 'week' ? 'active' : ''}`}
-              onClick={() => setSelectedPeriod('week')}
+              className="period-btn active"
+              disabled
             >
               Semaine
             </button>
             <button 
-              className={`period-btn ${selectedPeriod === 'month' ? 'active' : ''}`}
-              onClick={() => setSelectedPeriod('month')}
+              className="period-btn"
+              disabled
             >
               Mois
             </button>
             <button 
-              className={`period-btn ${selectedPeriod === 'year' ? 'active' : ''}`}
-              onClick={() => setSelectedPeriod('year')}
+              className="period-btn"
+              disabled
             >
               Année
             </button>

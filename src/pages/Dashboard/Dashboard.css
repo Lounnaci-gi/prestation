@@ -20,7 +20,7 @@
   font-weight: 700;
   color: #1f2937;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #f97316, #fb923c);
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -51,15 +51,15 @@
 }
 
 .period-btn:hover {
-  border-color: #0ea5e9;
-  color: #0ea5e9;
+  border-color: var(--primary-500);
+  color: var(--primary-500);
 }
 
 .period-btn.active {
-  background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-400));
   color: white;
   border-color: transparent;
-  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 132, 199, 0.3);
 }
 
 .stats-grid {
@@ -164,7 +164,7 @@
 }
 
 .chart-card .card-header {
-  background: linear-gradient(135deg, #f97316, #fb923c);
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
   color: white;
   padding: 1.25rem 1.5rem;
   border-radius: 20px 20px 0 0;
@@ -222,12 +222,12 @@
 }
 
 .bar.sales-bar {
-  background: linear-gradient(180deg, #38bdf8, #0ea5e9);
+  background: linear-gradient(180deg, var(--primary-400), var(--primary-500));
 }
 
 .bar.sales-bar:hover {
   filter: brightness(1.1);
-  box-shadow: 0 0 20px rgba(14, 165, 233, 0.4);
+  box-shadow: 0 0 20px rgba(0, 132, 199, 0.4);
 }
 
 .bar.target-bar {
@@ -317,7 +317,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #fb923c, #f97316);
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
   color: white;
   display: flex;
   align-items: center;
@@ -420,11 +420,11 @@
 }
 
 .activity-type.activity-devis {
-  color: #f59e0b;
+  color: #3b82f6;
 }
 
 .activity-type.activity-paiement {
-  color: #f97316;
+  color: #2563eb;
 }
 
 .activity-type.activity-facture {
@@ -441,7 +441,7 @@
 }
 
 .activity-status.pending {
-  color: #f59e0b;
+  color: #3b82f6;
 }
 
 .activity-client {

@@ -13,19 +13,3 @@ export const getAllClients = async () => {
     throw error.response?.data || { error: 'Erreur serveur lors de la récupération des clients' };
   }
 };
-
-/**
- * Crée un nouveau client
- */
-export const createClient = async (clientData) => {
-  try {
-    const response = await axios.post(`${API_BASE_URL}/clients`, clientData, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { error: 'Erreur serveur lors de la création du client' };
-  }
-};

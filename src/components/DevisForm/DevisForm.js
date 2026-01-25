@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import Input from '../../components/Input';
 import Select from '../../components/Select';
 import SearchableSelect from '../../components/SearchableSelect';
-import Button from '../../components/Button';
 import AlertService from '../../utils/alertService';
 import { getAllTarifs } from '../../api/tarifsApi';
 import { getAllClients } from '../../api/clientsApi';
@@ -47,7 +46,6 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
   ]);
 
   const [clients, setClients] = useState([]);
-  const [loadingClients, setLoadingClients] = useState(true);
 
   // Charger les données initiales si en mode édition
   useEffect(() => {
@@ -290,6 +288,7 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.typeDossier, tarifs, isInitializing]);
 
   // Mettre à jour automatiquement le prix de transport quand le volume change
@@ -303,12 +302,12 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
         }));
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.volumeParCiterne, tarifs, isInitializing]);
 
   // Charger les clients depuis la base de données
   const loadClients = async () => {
     try {
-      setLoadingClients(true);
       const clientsFromDb = await getAllClients();
       
       // Transformer les données pour correspondre au format attendu par le composant
@@ -328,8 +327,6 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
     } catch (error) {
       // En cas d'erreur, on garde quand même l'option pour créer un nouveau client
       setClients([{ value: 'new', label: '+ Créer un nouveau client', code: 'NEW', isNew: true }]);
-    } finally {
-      setLoadingClients(false);
     }
   };
 
@@ -645,28 +642,35 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
 
   return (
     <form onSubmit={handleSubmit} className="devis-form">
+      {/* Header avec titre et actions */}
       <div className="form-header">
-        <h2 className="form-title">Nouveau devis</h2>
+        <div className="header-content">
+          <h2 className="form-title">Nouveau Devis</h2>
+          <p className="form-subtitle">Créer et gérer vos devis professionnels</p>
+        </div>
         <div className="header-actions">
-          <button className="btn btn-cancel" onClick={(e) => handleCancel(e)} title="Annuler">
-            ❌
+          <button className="btn btn-secondary" onClick={(e) => handleCancel(e)} title="Annuler">
+            <span className="btn-icon">✕</span>
+            <span className="btn-text">Annuler</span>
           </button>
-          <button className="btn btn-save" type="submit" title="Enregistrer">
-            💾
-          </button>
-          <button className="btn btn-finalize" title="Finaliser et envoyer">
-            ✅
+          <button className="btn btn-primary" type="submit" title="Enregistrer">
+            <span className="btn-icon">✓</span>
+            <span className="btn-text">Enregistrer</span>
           </button>
         </div>
       </div>
 
+      {/* Section 1: Type de Devis et Informations Générales */}
       <div className="form-section">
         <div className="section-header">
-          <h3 className="section-title">Informations Générales</h3>
+          <div className="header-title">
+            <span className="section-icon">📋</span>
+            <h3 className="section-title">Informations Générales</h3>
+          </div>
         </div>
         <div className="form-grid">
           <Select
-            label="Type de Devis"
+            label="Type de Devis*"
             name="typeDossier"
             value={formData.typeDossier}
             onChange={handleChange}
@@ -678,19 +682,8 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
 
           {formData.typeDossier && (
             <>
-              <SearchableSelect
-                label="Client"
-                name="clientId"
-                value={formData.clientId}
-                onChange={handleChange}
-                options={clients}
-                placeholder="Tapez pour rechercher un client..."
-                required
-                error={errors.clientId}
-              />
-
               <Input
-                label="Date du Devis"
+                label="Date du Devis*"
                 type="date"
                 name="dateDevis"
                 value={formData.dateDevis}
@@ -699,7 +692,7 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
               />
 
               <Select
-                label="Statut"
+                label="Statut*"
                 name="statut"
                 value={formData.statut}
                 onChange={handleChange}
@@ -712,131 +705,162 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
             </>
           )}
         </div>
-
-        {formData.clientId && (
-          <>
-            <div className="section-header">
-              <h3 className="section-title">
-                {isCreatingNewClient ? 'Nouveau Client' : 'Informations du Client'}
-              </h3>
-              {isCreatingNewClient && (
-                <span className="new-client-badge">🆕 Nouveau</span>
-              )}
-            </div>
-            <div className="form-grid">
-              <Input
-                label="Code Client"
-                type="text"
-                name="codeClient"
-                value={formData.codeClient}
-                onChange={handleChange}
-                disabled={!isCreatingNewClient}
-                required={isCreatingNewClient}
-                error={errors.codeClient}
-                placeholder={isCreatingNewClient ? "6 caractères (ex: CLI001)" : ""}
-                maxLength="6"
-                style={{ textTransform: 'uppercase' }}
-              />
-
-              <Input
-                label="Nom / Raison Sociale"
-                type="text"
-                name="nomRaisonSociale"
-                value={formData.nomRaisonSociale}
-                onChange={handleChange}
-                required
-                error={errors.nomRaisonSociale}
-                placeholder={isCreatingNewClient ? "Nom & Prénom" : ""}
-              />
-
-              <Input
-                label="Téléphone"
-                type="tel"
-                name="telephone"
-                value={formData.telephone}
-                onChange={handleChange}
-                placeholder="0555123456"
-                maxLength="10"
-                error={errors.telephone}
-              />
-
-              <Input
-                label="Email"
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="contact@example.dz"
-                maxLength="60"
-                error={errors.email}
-              />
-            </div>
-
-            <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
-              <Input
-                label="Adresse"
-                type="text"
-                name="adresse"
-                value={formData.adresse}
-                onChange={handleChange}
-                required
-                error={errors.adresse}
-                placeholder="Adresse complète du client"
-              />
-            </div>
-          </>
-        )}
       </div>
 
-
+      {/* Section 2: Sélection du Client */}
       {formData.typeDossier && (
         <div className="form-section">
           <div className="section-header">
-            <h3 className="section-title">Détails de la Prestation</h3>
+            <div className="header-title">
+              <span className="section-icon">👤</span>
+              <h3 className="section-title">Sélection du Client</h3>
+            </div>
           </div>
           <div className="form-grid">
-            {/* Colonne à gauche pour les champs Eau */}
-            <div className="water-fields-column">
-              <div className="water-field-group">
-                <div className="water-field-item">
-                  <label className="water-field-label">Prix Unitaire Eau HT (DZD/m³)*</label>
-                  <div className="water-field-value">
-                    {formData.typeDossier ? (
-                      (() => {
-                        const tarifType = formData.typeDossier === 'CITERNAGE' ? 'CITERNAGE' : 
-                                        formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
-                                        formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
-                        const tarif = tarifType ? getTarifByType(tarifType) : null;
-                        return tarif ? `${tarif.PrixHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD/m³` : 'Tarif non disponible';
-                      })()
-                    ) : 'Sélectionnez un type de devis'}
-                  </div>
-                </div>
-                <div className="water-field-item">
-                  <label className="water-field-label">Taux TVA Eau (%)*</label>
-                  <div className="water-field-value">
-                    {formData.typeDossier ? (
-                      (() => {
-                        const tarifType = formData.typeDossier === 'CITERNAGE' ? 'CITERNAGE' : 
-                                        formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
-                                        formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
-                        const tarif = tarifType ? getTarifByType(tarifType) : null;
-                        return tarif ? `${(tarif.TauxTVA * 100).toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %` : 'TVA non disponible';
-                      })()
-                    ) : 'Sélectionnez un type de devis'}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Colonne principale - reste des champs */}
-            <div className="main-fields">
-              {/* Les autres champs iront ici si nécessaire */}
-            </div>
+            <SearchableSelect
+              label="Client*"
+              name="clientId"
+              value={formData.clientId}
+              onChange={handleChange}
+              options={clients}
+              placeholder="Tapez pour rechercher un client..."
+              required
+              error={errors.clientId}
+            />
           </div>
 
+          {formData.clientId && (
+            <div className="client-details-section">
+              <div className="client-header">
+                <div className="client-header-title">
+                  <span className="client-status-badge">
+                    {isCreatingNewClient ? '🆕 Nouveau Client' : '✓ Client Sélectionné'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="client-info-grid">
+                <div className="client-col-1">
+                  <Input
+                    label="Code Client*"
+                    type="text"
+                    name="codeClient"
+                    value={formData.codeClient}
+                    onChange={handleChange}
+                    disabled={!isCreatingNewClient}
+                    required={isCreatingNewClient}
+                    error={errors.codeClient}
+                    placeholder={isCreatingNewClient ? "CLI001" : ""}
+                    maxLength="6"
+                    style={{ textTransform: 'uppercase' }}
+                  />
+
+                  <Input
+                    label="Téléphone"
+                    type="tel"
+                    name="telephone"
+                    value={formData.telephone}
+                    onChange={handleChange}
+                    placeholder="0555123456"
+                    maxLength="10"
+                    error={errors.telephone}
+                  />
+                </div>
+
+                <div className="client-col-2">
+                  <Input
+                    label="Nom / Raison Sociale*"
+                    type="text"
+                    name="nomRaisonSociale"
+                    value={formData.nomRaisonSociale}
+                    onChange={handleChange}
+                    required
+                    error={errors.nomRaisonSociale}
+                    placeholder={isCreatingNewClient ? "Nom & Prénom" : ""}
+                  />
+
+                  <Input
+                    label="Email"
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="contact@example.dz"
+                    maxLength="60"
+                    error={errors.email}
+                  />
+                </div>
+              </div>
+
+              <div className="client-address-field">
+                <Input
+                  label="Adresse Complète*"
+                  type="text"
+                  name="adresse"
+                  value={formData.adresse}
+                  onChange={handleChange}
+                  required
+                  error={errors.adresse}
+                  placeholder="Rue, Quartier, Commune, Wilaya"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {formData.typeDossier && formData.clientId && (
+        <div className="form-section">
           <div className="section-header">
-            <h3 className="section-title">Citernes</h3>
+            <div className="header-title">
+              <span className="section-icon">💧</span>
+              <h3 className="section-title">Paramètres de Prestation</h3>
+            </div>
+          </div>
+          
+          {/* Affichage des tarifs applicables */}
+          <div className="tarifs-display">
+            <div className="tarif-card">
+              <div className="tarif-label">Prix Unitaire Eau HT</div>
+              <div className="tarif-value">
+                {formData.typeDossier ? (
+                  (() => {
+                    const tarifType = formData.typeDossier === 'CITERNAGE' ? 'CITERNAGE' : 
+                                    formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
+                                    formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
+                    const tarif = tarifType ? getTarifByType(tarifType) : null;
+                    return tarif ? `${tarif.PrixHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD/m³` : 'Non disponible';
+                  })()
+                ) : 'Sélectionnez un type'}
+              </div>
+            </div>
+
+            <div className="tarif-card">
+              <div className="tarif-label">Taux TVA Eau</div>
+              <div className="tarif-value">
+                {formData.typeDossier ? (
+                  (() => {
+                    const tarifType = formData.typeDossier === 'CITERNAGE' ? 'CITERNAGE' : 
+                                    formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
+                                    formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
+                    const tarif = tarifType ? getTarifByType(tarifType) : null;
+                    return tarif ? `${(tarif.TauxTVA * 100).toLocaleString('fr-DZ', { minimumFractionDigits: 0 })} %` : 'Non disponible';
+                  })()
+                ) : 'Sélectionnez un type'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {formData.typeDossier && formData.clientId && (
+        <div className="form-section">
+          <div className="section-header">
+            <div className="header-title">
+              <span className="section-icon">🛢️</span>
+              <h3 className="section-title">Lignes de Commande</h3>
+            </div>
+            <span className="section-badge">{citerneRows.length} ligne(s)</span>
           </div>
           
           <div className="citerne-table-container">
@@ -844,9 +868,9 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
               <thead>
                 <tr>
                   <th>Quantité</th>
-                  <th>Volume par Citerne (m³)</th>
-                  <th>Total Volume (m³)</th>
-                  <th>Inclure Transport</th>
+                  <th>Volume/Citerne (m³)</th>
+                  <th>Total (m³)</th>
+                  <th>Transport</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -916,44 +940,69 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
       {formData.typeDossier && (
         <div className="form-section">
           <div className="section-header">
-            <h3 className="section-title">Calcul du Devis</h3>
+            <div className="header-title">
+              <span className="section-icon">💰</span>
+              <h3 className="section-title">Résumé du Devis</h3>
+            </div>
           </div>
-          <div className="totals-grid">
-            <div className="total-item">
-              <span className="total-label">Volume Total:</span>
-              <span className="total-value">{totals.volumeTotal.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³</span>
+          
+          <div className="totals-container">
+            {/* Ligne 1: Volume */}
+            <div className="totals-row">
+              <div className="total-item">
+                <span className="total-label">Volume Total</span>
+                <span className="total-value primary">{totals.volumeTotal.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³</span>
+              </div>
             </div>
-            <div className="total-item highlight">
-              <span className="total-label">Total Eau HT:</span>
-              <span className="total-value">{totals.totalEauHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
+
+            {/* Ligne 2: Eau */}
+            <div className="totals-section-header">Eau</div>
+            <div className="totals-row">
+              <div className="total-item">
+                <span className="total-label">Montant HT</span>
+                <span className="total-value">{totals.totalEauHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
+              </div>
+              <div className="total-item">
+                <span className="total-label">TVA</span>
+                <span className="total-value">{totals.totalEauTVA.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
+              </div>
+              <div className="total-item highlight">
+                <span className="total-label">Total TTC</span>
+                <span className="total-value">{totals.totalEauTTC.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
+              </div>
             </div>
-            <div className="total-item">
-              <span className="total-label">TVA Eau:</span>
-              <span className="total-value">{totals.totalEauTVA.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
-            </div>
-            <div className="total-item highlight">
-              <span className="total-label">Total Eau TTC:</span>
-              <span className="total-value">{totals.totalEauTTC.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
-            </div>
-            <div className="total-item">
-              <span className="total-label">Total Transport HT:</span>
-              <span className="total-value">{totals.totalTransportHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
-            </div>
-            <div className="total-item">
-              <span className="total-label">TVA Transport:</span>
-              <span className="total-value">{totals.totalTransportTVA.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
-            </div>
-            <div className="total-item highlight">
-              <span className="total-label">Total Transport TTC:</span>
-              <span className="total-value">{totals.totalTransportTTC.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
-            </div>
-            <div className="total-item grand-total">
-              <span className="total-label">TOTAL GÉNÉRAL TTC:</span>
-              <span className="total-value">{totals.totalTTC.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
-            </div>
-            <div className="total-item grand-total-words">
-              <span className="total-label">Ce devis est arrêté à la somme de :</span>
-              <span className="total-words">{amountToWords(totals.totalTTC)}</span>
+
+            {/* Ligne 3: Transport */}
+            {totals.totalTransportHT > 0 && (
+              <>
+                <div className="totals-section-header">Transport</div>
+                <div className="totals-row">
+                  <div className="total-item">
+                    <span className="total-label">Montant HT</span>
+                    <span className="total-value">{totals.totalTransportHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
+                  </div>
+                  <div className="total-item">
+                    <span className="total-label">TVA</span>
+                    <span className="total-value">{totals.totalTransportTVA.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
+                  </div>
+                  <div className="total-item highlight">
+                    <span className="total-label">Total TTC</span>
+                    <span className="total-value">{totals.totalTransportTTC.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Ligne 4: Total général */}
+            <div className="totals-grand-total">
+              <div className="grand-total-row">
+                <span className="grand-total-label">TOTAL GÉNÉRAL TTC</span>
+                <span className="grand-total-value">{totals.totalTTC.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD</span>
+              </div>
+              <div className="total-words-row">
+                <span className="total-words-label">Arrêté à la somme de :</span>
+                <span className="total-words-value">{amountToWords(totals.totalTTC)}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -962,20 +1011,35 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
       {formData.typeDossier && (
         <div className="form-section">
           <div className="section-header">
-            <h3 className="section-title">Notes (Optionnel)</h3>
+            <div className="header-title">
+              <span className="section-icon">📝</span>
+              <h3 className="section-title">Notes et Commentaires</h3>
+            </div>
           </div>
           <textarea
             className="notes-textarea"
             name="notes"
             value={formData.notes}
             onChange={handleChange}
-            placeholder="Ajouter des notes ou commentaires..."
-            rows="4"
+            placeholder="Ajouter des conditions particulières, des délais de livraison, ou tout autre détail important..."
+            rows="5"
           />
         </div>
       )}
 
-
+      {/* Pied de page avec actions */}
+      {formData.typeDossier && (
+        <div className="form-footer">
+          <button className="btn btn-secondary btn-lg" onClick={(e) => handleCancel(e)}>
+            <span className="btn-icon">✕</span>
+            <span>Annuler</span>
+          </button>
+          <button className="btn btn-primary btn-lg" type="submit">
+            <span className="btn-icon">✓</span>
+            <span>Enregistrer le Devis</span>
+          </button>
+        </div>
+      )}
     </form>
   );
 };

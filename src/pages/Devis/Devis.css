@@ -62,3 +62,16 @@
   color: #666;
   font-style: italic;
 }
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--secondary-200);
+  margin-bottom: 1.5rem;
+}
+
+.form-actions .btn {
+  min-width: 250px;
+}

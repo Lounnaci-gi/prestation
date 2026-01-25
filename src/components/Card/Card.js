@@ -6,13 +6,12 @@ const Card = ({
   title, 
   subtitle, 
   className = '', 
-  hover = false,
   onClick,
   ...props 
 }) => {
   return (
     <div 
-      className={`card ${hover ? 'card-hover' : ''} ${className}`}
+      className={`card ${className}`}
       onClick={onClick}
       {...props}
     >

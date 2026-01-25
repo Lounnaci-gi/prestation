@@ -3,7 +3,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import Card from '../../components/Card';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
-import Swal from 'sweetalert2';
 import AlertService from '../../utils/alertService';
 import './Profile.css';
 
@@ -55,15 +54,10 @@ const Profile = () => {
     e.preventDefault();
     
     // Afficher une boîte de dialogue de confirmation
-    const result = await Swal.fire({
-      title: 'Confirmation',
-      text: 'Voulez-vous enregistrer les modifications ?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Oui',
-      cancelButtonText: 'Non',
-      reverseButtons: true
-    });
+    const result = await AlertService.confirm(
+      'Confirmation',
+      'Voulez-vous enregistrer les modifications ?'
+    );
     
     if (!result.isConfirmed) {
       // L'utilisateur a annulé, ne rien faire

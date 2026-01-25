@@ -63,7 +63,7 @@ const AlertService = {
       title,
       text,
       confirmButtonText: 'OK',
-      confirmButtonColor: '#f59e0b',
+      confirmButtonColor: '#3b82f6',
       // Animations douces
       showClass: {
         popup: 'swal2-show',

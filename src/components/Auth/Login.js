@@ -23,8 +23,8 @@ const Login = () => {
   
   // Initialiser l'état de verrouillage au chargement
   useEffect(() => {
-    const storedLockTime = localStorage.getItem('loginLockTime');
-    const storedAttempts = localStorage.getItem('loginAttempts');
+    const storedLockTime = sessionStorage.getItem('loginLockTime');
+    const storedAttempts = sessionStorage.getItem('loginAttempts');
     
     if (storedLockTime) {
       const lockTime = parseInt(storedLockTime);
@@ -38,8 +38,8 @@ const Login = () => {
         startCountdown(remaining);
       } else {
         // Déverrouiller et réinitialiser
-        localStorage.removeItem('loginLockTime');
-        localStorage.removeItem('loginAttempts');
+        sessionStorage.removeItem('loginLockTime');
+        sessionStorage.removeItem('loginAttempts');
         setFailedAttempts(0);
       }
     } else if (storedAttempts) {
@@ -66,8 +66,8 @@ const Login = () => {
         if (prev <= 1) {
           clearInterval(interval);
           setIsLocked(false);
-          localStorage.removeItem('loginLockTime');
-          localStorage.removeItem('loginAttempts');
+          sessionStorage.removeItem('loginLockTime');
+          sessionStorage.removeItem('loginAttempts');
           setFailedAttempts(0);
           return 0;
         }
@@ -131,22 +131,22 @@ const Login = () => {
       if (response.ok && data.success) {
         setSuccess('Connexion réussie! Redirection...');
         // Réinitialiser les tentatives échouées
-        localStorage.removeItem('loginAttempts');
-        localStorage.removeItem('loginLockTime');
+        sessionStorage.removeItem('loginAttempts');
+        sessionStorage.removeItem('loginLockTime');
         setFailedAttempts(0);
         login(data.user);
-        setTimeout(() => navigate('/dashboard'), 1000);
+        setTimeout(() => navigate('/'), 1000);
       } else {
         // Incrémenter le compteur de tentatives échouées
         const newAttempts = failedAttempts + 1;
         setFailedAttempts(newAttempts);
-        localStorage.setItem('loginAttempts', newAttempts.toString());
+        sessionStorage.setItem('loginAttempts', newAttempts.toString());
         
         // Vérifier si on a atteint le nombre max de tentatives
         if (newAttempts >= MAX_ATTEMPTS) {
           setIsLocked(true);
           const lockTime = Date.now();
-          localStorage.setItem('loginLockTime', lockTime.toString());
+          sessionStorage.setItem('loginLockTime', lockTime.toString());
           setRemainingTime(LOCK_DURATION);
           startCountdown(LOCK_DURATION);
           

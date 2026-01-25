@@ -233,13 +233,16 @@ const Devis = () => {
           <h1 className="page-title">Gestion des Devis</h1>
           <p className="page-subtitle">Devis quantitatifs et estimatifs</p>
         </div>
-        {!showForm && (
+      </div>
+
+      {!showForm && (
+        <div className="form-actions">
           <Button variant="primary" onClick={() => {
             setEditingDevis(null);
             setShowForm(true);
           }}>+ Nouveau Devis</Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {showForm ? (
         <Card>

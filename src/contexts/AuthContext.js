@@ -16,12 +16,13 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Vérifier si l'utilisateur est déjà connecté au chargement de l'application
-    const storedUser = localStorage.getItem('user');
+    // Utiliser sessionStorage pour que la session soit invalidée à chaque redémarrage
+    const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (error) {
-        localStorage.removeItem('user'); // Supprimer les données corrompues
+        sessionStorage.removeItem('user'); // Supprimer les données corrompues
       }
     }
     setLoading(false);
@@ -29,12 +30,12 @@ export const AuthProvider = ({ children }) => {
 
   const login = (userData) => {
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+    sessionStorage.setItem('user', JSON.stringify(userData));
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
   };
 
   const value = {

@@ -57,9 +57,9 @@
 }
 
 .notification.info {
-  border-left-color: #0ea5e9;
-  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
-  color: #075985;
+  border-left-color: var(--primary-500);
+  background: linear-gradient(135deg, var(--primary-50), var(--primary-100));
+  color: var(--primary-700);
 }
 
 .notification-icon {
