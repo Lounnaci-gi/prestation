@@ -3,13 +3,15 @@ const express = require('express');
 const { Connection, Request, TYPES } = require('tedious');
 const cors = require('cors');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken'); // Ajout de JWT pour l'authentification
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware CORS pour autoriser les requêtes depuis le frontend
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5001'], // Ports habituels pour React
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:5001'], // Ports habituels pour React
   credentials: true,
   optionsSuccessStatus: 200
 }));
@@ -22,7 +24,7 @@ const config = {
     port: parseInt(process.env.DB_PORT) || 1433,
     database: process.env.DB_NAME || 'GestionEau',
     encrypt: process.env.DB_ENCRYPT === 'true',
-    trustServerCertificate: true,
+    trustServerCertificate: process.env.DB_TRUST_CERTIFICATE === 'true',
     useUTC: true,
     enableArithAbort: true
   },
@@ -36,6 +38,40 @@ const config = {
 };
 
 // Tentative de connexion à la base de données - journalisé dans les logs
+
+// Fonction utilitaire pour générer un token JWT
+const generateToken = (user) => {
+  return jwt.sign(
+    {
+      userId: user.UserID,
+      email: user.Email,
+      role: user.RoleID
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || '24h'
+    }
+  );
+};
+
+// Middleware pour vérifier le token JWT
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ error: 'Accès refusé. Token manquant.' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ error: 'Token invalide ou expiré.' });
+    }
+    
+    req.user = decoded;
+    next();
+  });
+};
 
 // Connexion à la base de données
 const connection = new Connection(config);
@@ -1484,10 +1520,9 @@ app.post('/api/register', async (req, res) => {
       return res.status(409).json({ error: 'Un utilisateur avec cet email existe déjà' });
     }
 
-    // Hasher le mot de passe (dans une implémentation réelle, utilisez bcrypt)
-    // Pour l'instant, on stocke le mot de passe en clair pour la démonstration
-    // MAIS EN PRODUCTION, IL FAUT TOUJOURS LE HASHER
-    const hashedPassword = password; // Remplacez ceci par un vrai hashage avec bcrypt
+    // Hasher le mot de passe avec bcrypt (SECURISE)
+    const saltRounds = 12; // Niveau de sécurité élevé
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Récupérer le rôle par défaut (par exemple, utilisateur basique avec RoleID = 1)
     // Si le rôle par défaut n'existe pas, on attribue le rôle 1
@@ -1695,11 +1730,71 @@ app.post('/api/login', async (req, res) => {
 
     const user = results[0];
     
-    // Dans une application réelle, vous devriez comparer les hachages de mots de passe
-    // Ici, pour démonstration, nous allons temporairement accepter n'importe quel mot de passe
-    // En production, utilisez bcrypt pour comparer le mot de passe haché
+    // Vérifier le mot de passe avec bcrypt (SECURISE)
+    const isPasswordValid = await bcrypt.compare(password, user.MotDePasseHash);
     
-    // Mise à jour de la date de dernière connexion
+    if (!isPasswordValid) {
+      // Incrémenter le compteur de tentatives échouées
+      const incrementQuery = `UPDATE Utilisateurs 
+                             SET NombreTentativesEchec = NombreTentativesEchec + 1 
+                             WHERE UserID = @userId`;
+      const incrementParams = [
+        { name: 'userId', type: 'int', value: user.UserID }
+      ];
+      
+      await new Promise((resolve, reject) => {
+        executeQuery(incrementQuery, incrementParams, (err, results) => {
+          if (err) {
+            console.error('Erreur lors de l\'incrémentation des tentatives:', err);
+          }
+          resolve(results);
+        });
+      });
+      
+      // Vérifier si le compte doit être verrouillé
+      const lockoutCheckQuery = `SELECT NombreTentativesEchec, CompteVerrouille, DateVerrouillage 
+                                FROM Utilisateurs WHERE UserID = @userId`;
+      const lockoutCheckParams = [
+        { name: 'userId', type: 'int', value: user.UserID }
+      ];
+      
+      const lockoutResults = await new Promise((resolve, reject) => {
+        executeQuery(lockoutCheckQuery, lockoutCheckParams, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+      
+      if (lockoutResults && lockoutResults.length > 0) {
+        const userData = lockoutResults[0];
+        if (userData.NombreTentativesEchec >= 5 && !userData.CompteVerrouille) {
+          // Verrouiller le compte
+          const lockQuery = `UPDATE Utilisateurs 
+                           SET CompteVerrouille = 1, DateVerrouillage = @lockDate 
+                           WHERE UserID = @userId`;
+          const lockParams = [
+            { name: 'lockDate', type: 'datetime', value: new Date() },
+            { name: 'userId', type: 'int', value: user.UserID }
+          ];
+          
+          await new Promise((resolve, reject) => {
+            executeQuery(lockQuery, lockParams, (err, results) => {
+              if (err) {
+                console.error('Erreur lors du verrouillage du compte:', err);
+              }
+              resolve(results);
+            });
+          });
+          
+          return res.status(423).json({ 
+            error: 'Compte verrouillé après 5 tentatives échouées. Contactez l\'administrateur.',
+            lockout: true 
+          });
+        }
+      }
+      
+      return res.status(401).json({ error: 'Identifiants invalides' });
+    }
     const updateQuery = `UPDATE Utilisateurs SET DerniereConnexion = @dateConnexion WHERE UserID = @userId`;
     const updateParams = [
       { name: 'dateConnexion', type: 'datetime', value: new Date() },
@@ -1730,6 +1825,13 @@ app.post('/api/login', async (req, res) => {
       });
     });
 
+    // Générer le token JWT
+    const token = generateToken({
+      UserID: user.UserID,
+      Email: user.Email,
+      RoleID: user.RoleID
+    });
+
     // Retourner les informations de l'utilisateur sans le mot de passe
     const userInfo = {
       UserID: user.UserID,
@@ -1758,7 +1860,11 @@ app.post('/api/login', async (req, res) => {
       DateConnexion: new Date()
     };
 
-    res.json({ success: true, user: userInfo });
+    res.json({ 
+      success: true, 
+      token: token,
+      user: userInfo 
+    });
   } catch (error) {
     console.error('Erreur lors de la connexion:', error);
     res.status(500).json({ error: 'Erreur serveur lors de la connexion', details: error.message });
@@ -1770,6 +1876,15 @@ app.post('/api/logout', (req, res) => {
   // Actuellement, la déconnexion est gérée côté client
   // Cet endpoint pourrait être étendu pour invalider des tokens si vous implémentez JWT
   res.json({ success: true, message: 'Déconnexion réussie' });
+});
+
+// Endpoint protégé pour tester l'authentification JWT
+app.get('/api/protected', authenticateToken, (req, res) => {
+  res.json({ 
+    message: 'Accès autorisé aux ressources protégées',
+    user: req.user,
+    timestamp: new Date()
+  });
 });
 
 // Endpoint pour récupérer les informations du profil utilisateur
@@ -1976,16 +2091,16 @@ app.put('/api/users/change-password', async (req, res) => {
 
     const user = userResults[0];
     
-    
-    const isCurrentPasswordValid = true;
+    // Vérifier le mot de passe actuel avec bcrypt
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.MotDePasseHash);
     
     if (!isCurrentPasswordValid) {
       return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
     }
 
-    // Mettre à jour le mot de passe (EN PRODUCTION, HASHEZ LE MOT DE PASSE)
-    // Remplacer cette ligne par un vrai hachage de mot de passe (ex: avec bcrypt)
-    const hashedNewPassword = newPassword; // Remplacez ceci par un vrai hashage
+    // Hasher le nouveau mot de passe avec bcrypt (SECURISE)
+    const saltRounds = 12;
+    const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
 
     const updatePasswordQuery = `UPDATE Utilisateurs 
                                 SET MotDePasseHash = @newPassword, DateModification = @dateModif

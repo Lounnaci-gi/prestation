@@ -134,7 +134,8 @@ const Login = () => {
         sessionStorage.removeItem('loginAttempts');
         sessionStorage.removeItem('loginLockTime');
         setFailedAttempts(0);
-        login(data.user);
+        // Utiliser le token JWT et les données utilisateur
+        login(data.user, data.token);
         setTimeout(() => navigate('/'), 1000);
       } else {
         // Incrémenter le compteur de tentatives échouées

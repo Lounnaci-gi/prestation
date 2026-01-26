@@ -12,37 +12,46 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Vérifier si l'utilisateur est déjà connecté au chargement de l'application
-    // Utiliser sessionStorage pour que la session soit invalidée à chaque redémarrage
     const storedUser = sessionStorage.getItem('user');
-    if (storedUser) {
+    const storedToken = sessionStorage.getItem('token');
+    
+    if (storedUser && storedToken) {
       try {
         setUser(JSON.parse(storedUser));
+        setToken(storedToken);
       } catch (error) {
-        sessionStorage.removeItem('user'); // Supprimer les données corrompues
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('token');
       }
     }
     setLoading(false);
   }, []);
 
-  const login = (userData) => {
+  const login = (userData, jwtToken) => {
     setUser(userData);
+    setToken(jwtToken);
     sessionStorage.setItem('user', JSON.stringify(userData));
+    sessionStorage.setItem('token', jwtToken);
   };
 
   const logout = () => {
     setUser(null);
+    setToken(null);
     sessionStorage.removeItem('user');
+    sessionStorage.removeItem('token');
   };
 
   const value = {
     user,
+    token,
     login,
     logout,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!token,
     loading
   };
 
