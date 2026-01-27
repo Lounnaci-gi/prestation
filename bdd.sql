@@ -1,285 +1,505 @@
+-- ================================================================
+-- SCRIPT DE CRÃ‰ATION COMPLÃˆTE - PROJET GESTION EAU
+-- Base de donnÃ©es, Tables, ProcÃ©dures stockÃ©es et Utilisateurs
+-- Date: 2026-01-27
+-- ================================================================
+
 USE master;
 GO
 
--- Vérifie si la base existe déjà pour éviter une erreur
-IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'GestionEau')
+-- ================================================================
+-- CRÃ‰ATION DE LA BASE DE DONNÃ‰ES
+-- ================================================================
+
+IF EXISTS (SELECT * FROM sys.databases WHERE name = 'GestionEau')
 BEGIN
-    CREATE DATABASE GestionEau;
-    PRINT 'La base de données GestionEau a été créée avec succès.';
-END
-ELSE
-BEGIN
-    PRINT 'La base de données GestionEau existe déjà.';
+    DROP DATABASE GestionEau;
+    PRINT 'ðŸ—‘ï¸  Ancienne base de donnÃ©es GestionEau supprimÃ©e';
 END
 GO
 
-
-/* =============================================================================
-TABLES COMPLÉMENTAIRES : Paramètres Entreprise et Gestion Utilisateurs
-=============================================================================
-*/
+CREATE DATABASE GestionEau;
+PRINT 'âœ… Base de donnÃ©es GestionEau crÃ©Ã©e';
+GO
 
 USE GestionEau;
 GO
 
--- ============================================================================
--- 1. TABLE DES PARAMÈTRES DE L'ENTREPRISE
--- ============================================================================
-CREATE TABLE ParametresEntreprise (
-    ParamID INT PRIMARY KEY IDENTITY(1,1),
-    
-    -- Informations légales
-    NomEntreprise NVARCHAR(200) NOT NULL,
-    FormeJuridique NVARCHAR(50) NULL,              -- SARL, SPA, EURL, etc.
-    NumeroRegistreCommerce VARCHAR(50) NULL,       -- RC
-    NumeroIdentificationFiscale VARCHAR(50) NULL,  -- NIF
-    NumeroArticleImposition VARCHAR(50) NULL,      -- N° Article d'imposition
-    CapitalSocial DECIMAL(18, 2) NULL,
-    
-    -- Adresses
-    AdresseSiegeSocial NVARCHAR(MAX) NOT NULL,
-    Wilaya NVARCHAR(50) NULL,
-    CodePostal VARCHAR(10) NULL,
-    Commune NVARCHAR(100) NULL,
-    
-    -- Contacts
-    TelephonePrincipal VARCHAR(20) NOT NULL,
-    TelephoneSecondaire VARCHAR(20) NULL,
-    Fax VARCHAR(20) NULL,
-    EmailPrincipal VARCHAR(100) NOT NULL,
-    EmailComptabilite VARCHAR(100) NULL,
-    SiteWeb VARCHAR(200) NULL,
-    
-    -- Informations bancaires
-    NomBanque NVARCHAR(100) NULL,
-    CodeBanque VARCHAR(10) NULL,
-    CodeAgence VARCHAR(10) NULL,
-    NumeroCompte VARCHAR(50) NULL,
-    CleRIB VARCHAR(5) NULL,
-    IBAN VARCHAR(34) NULL,                         -- Format international si applicable
-    
-    -- Préfixe unique de l'entreprise
-    PrefixeEntreprise VARCHAR(10) NOT NULL DEFAULT 'ENT', -- Ex: CB, TV, TC
-    
-    -- Paramètres comptables
-    ExerciceComptable INT NULL,                    -- Année en cours
-    RegimeTVA VARCHAR(20) DEFAULT 'REEL_NORMAL',  -- REEL_NORMAL, REEL_SIMPLIFIE, etc.
-    
-    -- Logo et signature
-    LogoPath NVARCHAR(500) NULL,                   -- Chemin vers le logo
-    CachetPath NVARCHAR(500) NULL,                 -- Chemin vers le cachet
-    SignaturePath NVARCHAR(500) NULL,              -- Chemin vers la signature
-    
-    -- Textes personnalisables pour documents
-    MentionsLegalesDevis NVARCHAR(MAX) NULL,
-    MentionsLegalesFacture NVARCHAR(MAX) NULL,
-    ConditionsGeneralesVente NVARCHAR(MAX) NULL,
-    PiedDePageDevis NVARCHAR(MAX) NULL,
-    PiedDePageFacture NVARCHAR(MAX) NULL,
-    
-    -- Métadonnées
-    DateCreation DATETIME DEFAULT GETDATE(),
-    DateModification DATETIME DEFAULT GETDATE(),
-    ModifiePar INT NULL,                           -- UserID qui a modifié
-    Actif BIT DEFAULT 1,                           -- Pour gérer plusieurs configurations
-    
-    CONSTRAINT CHK_RegimeTVA CHECK (RegimeTVA IN ('REEL_NORMAL', 'REEL_SIMPLIFIE', 'FORFAIT'))
-);
-GO
+PRINT '';
+PRINT '================================================';
+PRINT 'ðŸš€ CRÃ‰ATION DES TABLES';
+PRINT '================================================';
+PRINT '';
 
--- ============================================================================
--- 2. TABLE DES RÔLES UTILISATEURS
--- ============================================================================
+-- ================================================================
+-- TABLE DES RÃ”LES
+-- ================================================================
+
 CREATE TABLE Roles (
-    RoleID INT PRIMARY KEY IDENTITY(1,1),
-    NomRole VARCHAR(50) UNIQUE NOT NULL,
-    Description NVARCHAR(200) NULL,
-    NiveauAcces INT NOT NULL DEFAULT 1,            -- 1=Basique, 2=Moyen, 3=Élevé, 4=Admin
-    
-    -- Permissions fonctionnelles
-    PeutCreerDevis BIT DEFAULT 0,
-    PeutModifierDevis BIT DEFAULT 0,
-    PeutSupprimerDevis BIT DEFAULT 0,
-    PeutValiderDevis BIT DEFAULT 0,
-    
-    PeutCreerFacture BIT DEFAULT 0,
-    PeutModifierFacture BIT DEFAULT 0,
-    PeutSupprimerFacture BIT DEFAULT 0,
-    PeutValiderFacture BIT DEFAULT 0,
-    
-    PeutGererClients BIT DEFAULT 0,
-    PeutGererTarifs BIT DEFAULT 0,
-    PeutGererReglements BIT DEFAULT 0,
-    PeutVoirRapports BIT DEFAULT 0,
-    PeutGererUtilisateurs BIT DEFAULT 0,
-    PeutModifierParametres BIT DEFAULT 0,
-    
-    DateCreation DATETIME DEFAULT GETDATE(),
-    Actif BIT DEFAULT 1
+    RoleID INT PRIMARY KEY IDENTITY(1,1),
+    NomRole VARCHAR(50) UNIQUE NOT NULL,
+    Description NVARCHAR(200) NULL,
+    NiveauAcces INT NOT NULL DEFAULT 1,
+    
+    -- Permissions sur les devis
+    PeutCreerDevis BIT DEFAULT 0,
+    PeutModifierDevis BIT DEFAULT 0,
+    PeutSupprimerDevis BIT DEFAULT 0,
+    PeutValiderDevis BIT DEFAULT 0,
+    
+    -- Permissions sur les factures
+    PeutCreerFacture BIT DEFAULT 0,
+    PeutModifierFacture BIT DEFAULT 0,
+    PeutSupprimerFacture BIT DEFAULT 0,
+    PeutValiderFacture BIT DEFAULT 0,
+    
+    -- Permissions gÃ©nÃ©rales
+    PeutGererClients BIT DEFAULT 0,
+    PeutGererTarifs BIT DEFAULT 0,
+    PeutGererReglements BIT DEFAULT 0,
+    PeutVoirRapports BIT DEFAULT 0,
+    PeutGererUtilisateurs BIT DEFAULT 0,
+    PeutModifierParametres BIT DEFAULT 0,
+    
+    DateCreation DATETIME DEFAULT GETDATE(),
+    Actif BIT DEFAULT 1
 );
+PRINT 'âœ… Table Roles crÃ©Ã©e';
 GO
 
--- ============================================================================
--- 3. TABLE DES UTILISATEURS
--- ============================================================================
+-- ================================================================
+-- TABLE DES UTILISATEURS
+-- ================================================================
+
 CREATE TABLE Utilisateurs (
-    UserID INT PRIMARY KEY IDENTITY(1,1),
-    RoleID INT NOT NULL,
-    
-    -- Informations personnelles
-    CodeUtilisateur VARCHAR(20) UNIQUE NOT NULL,
-    Nom NVARCHAR(100) NOT NULL,
-    Prenom NVARCHAR(100) NOT NULL,
-    Email VARCHAR(100) UNIQUE NOT NULL,
-    Telephone VARCHAR(20) NULL,
-    
-    -- Authentification
-    MotDePasseHash VARCHAR(255) NOT NULL,          -- Hash du mot de passe (bcrypt, etc.)
-    Salt VARCHAR(100) NULL,                        -- Salt pour le hashage
-    DerniereConnexion DATETIME NULL,
-    NombreTentativesEchec INT DEFAULT 0,
-    CompteVerrouille BIT DEFAULT 0,
-    DateVerrouillage DATETIME NULL,
-    
-    -- Sécurité
-    TokenReinitialisation VARCHAR(255) NULL,       -- Pour reset password
-    DateExpirationToken DATETIME NULL,
-    DeuxFacteursActif BIT DEFAULT 0,
-    SecretDeuxFacteurs VARCHAR(100) NULL,
-    
-    -- Préférences utilisateur
-    Langue VARCHAR(10) DEFAULT 'fr-DZ',            -- fr-DZ, ar-DZ
-    Theme VARCHAR(20) DEFAULT 'light',             -- light, dark
-    FormatDate VARCHAR(20) DEFAULT 'dd/MM/yyyy',
-    FormatNombre VARCHAR(20) DEFAULT 'fr-DZ',      -- Format nombre selon locale
-    
-    -- Métadonnées
-    DateCreation DATETIME DEFAULT GETDATE(),
-    DateModification DATETIME DEFAULT GETDATE(),
-    CreePar INT NULL,                              -- UserID créateur
-    ModifiePar INT NULL,                           -- UserID modificateur
-    Actif BIT DEFAULT 1,
-    Commentaire NVARCHAR(500) NULL,
-    
-    CONSTRAINT FK_Utilisateurs_Roles FOREIGN KEY (RoleID) REFERENCES Roles(RoleID),
-    CONSTRAINT FK_Utilisateurs_CreePar FOREIGN KEY (CreePar) REFERENCES Utilisateurs(UserID),
-    CONSTRAINT FK_Utilisateurs_ModifiePar FOREIGN KEY (ModifiePar) REFERENCES Utilisateurs(UserID)
+    UserID INT PRIMARY KEY IDENTITY(1,1),
+    RoleID INT NOT NULL DEFAULT 1,
+    
+    -- Informations personnelles
+    CodeUtilisateur VARCHAR(20) UNIQUE NOT NULL,
+    Nom NVARCHAR(100) NOT NULL,
+    Prenom NVARCHAR(100) NOT NULL,
+    Email VARCHAR(100) UNIQUE NOT NULL,
+    Telephone VARCHAR(20) NULL,
+    
+    -- Authentification
+    MotDePasseHash VARCHAR(255) NOT NULL,
+    Salt VARCHAR(100) NULL,
+    DerniereConnexion DATETIME NULL,
+    NombreTentativesEchec INT DEFAULT 0,
+    CompteVerrouille BIT DEFAULT 0,
+    DateVerrouillage DATETIME NULL,
+    
+    -- SÃ©curitÃ©
+    TokenReinitialisation VARCHAR(255) NULL,
+    DateExpirationToken DATETIME NULL,
+    DeuxFacteursActif BIT DEFAULT 0,
+    SecretDeuxFacteurs VARCHAR(100) NULL,
+    
+    -- PrÃ©fÃ©rences
+    Langue VARCHAR(10) DEFAULT 'fr-DZ',
+    Theme VARCHAR(20) DEFAULT 'light',
+    FormatDate VARCHAR(20) DEFAULT 'dd/MM/yyyy',
+    FormatNombre VARCHAR(20) DEFAULT 'fr-DZ',
+    
+    -- MÃ©tadonnÃ©es
+    DateCreation DATETIME DEFAULT GETDATE(),
+    DateModification DATETIME DEFAULT GETDATE(),
+    CreePar INT NULL,
+    ModifiePar INT NULL,
+    Actif BIT DEFAULT 1,
+    Commentaire NVARCHAR(500) NULL,
+    
+    CONSTRAINT FK_Utilisateurs_Roles FOREIGN KEY (RoleID) REFERENCES Roles(RoleID),
+    CONSTRAINT CHK_Email_Format CHECK (Email LIKE '%_@_%._%')
 );
+PRINT 'âœ… Table Utilisateurs crÃ©Ã©e';
 GO
 
--- ============================================================================
--- 4. TABLE HISTORIQUE DES ACTIONS UTILISATEURS (Audit Trail)
--- ============================================================================
-CREATE TABLE HistoriqueActions (
-    ActionID INT PRIMARY KEY IDENTITY(1,1),
-    UserID INT NOT NULL,
-    TypeAction VARCHAR(50) NOT NULL,               -- CREATE, UPDATE, DELETE, LOGIN, LOGOUT
-    TableCible VARCHAR(100) NULL,                  -- Table concernée
-    IDCible INT NULL,                              -- ID de l'enregistrement concerné
-    AncienneValeur NVARCHAR(MAX) NULL,             -- JSON des anciennes valeurs
-    NouvelleValeur NVARCHAR(MAX) NULL,             -- JSON des nouvelles valeurs
-    AdresseIP VARCHAR(45) NULL,                    -- IPv4 ou IPv6
-    UserAgent NVARCHAR(500) NULL,                  -- Navigateur/Device
-    DateAction DATETIME DEFAULT GETDATE(),
-    Reussi BIT DEFAULT 1,
-    MessageErreur NVARCHAR(MAX) NULL,
-    
-    CONSTRAINT FK_HistoriqueActions_Users FOREIGN KEY (UserID) REFERENCES Utilisateurs(UserID)
+-- ================================================================
+-- TABLE DES CLIENTS
+-- ================================================================
+
+CREATE TABLE Clients (
+    ClientID INT PRIMARY KEY IDENTITY(1,1),
+    CodeClient VARCHAR(20) UNIQUE NOT NULL,
+    NomRaisonSociale NVARCHAR(200) NOT NULL,
+    Adresse NVARCHAR(MAX) NOT NULL,
+    Telephone VARCHAR(20) NULL,
+    Email VARCHAR(100) NULL,
+    DateCreation DATETIME DEFAULT GETDATE(),
+    DateModification DATETIME DEFAULT GETDATE(),
+    Actif BIT DEFAULT 1,
+    
+    CONSTRAINT CHK_CodeClient_Length CHECK (LEN(CodeClient) = 6)
 );
+PRINT 'âœ… Table Clients crÃ©Ã©e';
 GO
 
--- ============================================================================
--- 5. TABLE DES COMPTEURS DE NUMÉROTATION
--- ============================================================================
+-- ================================================================
+-- TABLE DES VENTES
+-- ================================================================
+
+CREATE TABLE Ventes (
+    VenteID INT PRIMARY KEY IDENTITY(1,1),
+    ClientID INT NOT NULL,
+    TypeDossier VARCHAR(50) NOT NULL,
+    DateVente DATETIME NOT NULL DEFAULT GETDATE(),
+    DateCreation DATETIME DEFAULT GETDATE(),
+    DateModification DATETIME DEFAULT GETDATE(),
+    Actif BIT DEFAULT 1,
+    
+    CONSTRAINT FK_Ventes_Clients FOREIGN KEY (ClientID) REFERENCES Clients(ClientID),
+    CONSTRAINT CHK_TypeDossier CHECK (TypeDossier IN ('CITERNAGE', 'PROCES_VOL', 'ESSAI_RESEAU'))
+);
+PRINT 'âœ… Table Ventes crÃ©Ã©e';
+GO
+
+-- ================================================================
+-- TABLE DES DEVIS
+-- ================================================================
+
+CREATE TABLE Devis (
+    DevisID INT PRIMARY KEY IDENTITY(1,1),
+    VenteID INT NOT NULL,
+    CodeDevis VARCHAR(50) UNIQUE NOT NULL,
+    Statut VARCHAR(50) DEFAULT 'EN ATTENTE',
+    DateCreation DATETIME DEFAULT GETDATE(),
+    DateModification DATETIME DEFAULT GETDATE(),
+    Actif BIT DEFAULT 1,
+    
+    CONSTRAINT FK_Devis_Ventes FOREIGN KEY (VenteID) REFERENCES Ventes(VenteID),
+    CONSTRAINT CHK_StatutDevis CHECK (Statut IN ('EN ATTENTE', 'VALIDE', 'ANNULE', 'FACTURE'))
+);
+PRINT 'âœ… Table Devis crÃ©Ã©e';
+GO
+
+-- ================================================================
+-- TABLE DES LIGNES DE VENTES
+-- ================================================================
+
+CREATE TABLE LignesVentes (
+    LigneVenteID INT PRIMARY KEY IDENTITY(1,1),
+    VenteID INT NOT NULL,
+    NombreCiternes INT NOT NULL DEFAULT 1,
+    VolumeParCiterne INT NOT NULL DEFAULT 0,
+    PrixUnitaireM3_HT DECIMAL(18,2) NOT NULL,
+    TauxTVA_Eau DECIMAL(6,4) NOT NULL,
+    PrixTransportUnitaire_HT DECIMAL(18,2) DEFAULT 0,
+    TauxTVA_Transport DECIMAL(6,4) DEFAULT 0,
+    DateCreation DATETIME DEFAULT GETDATE(),
+    
+    CONSTRAINT FK_LignesVentes_Ventes FOREIGN KEY (VenteID) REFERENCES Ventes(VenteID),
+    CONSTRAINT CHK_NombreCiternes CHECK (NombreCiternes >= 1),
+    CONSTRAINT CHK_VolumeParCiterne CHECK (VolumeParCiterne >= 0 AND VolumeParCiterne <= 500)
+);
+PRINT 'âœ… Table LignesVentes crÃ©Ã©e';
+GO
+
+-- ================================================================
+-- TABLE DES TARIFS HISTORIQUES
+-- ================================================================
+
+CREATE TABLE Tarifs_Historique (
+    TarifID INT PRIMARY KEY IDENTITY(1,1),
+    TypePrestation VARCHAR(50) NOT NULL,
+    VolumeReference INT NULL,
+    PrixHT DECIMAL(18,2) NOT NULL,
+    TauxTVA DECIMAL(6,4) NOT NULL,
+    DateDebut DATETIME NOT NULL DEFAULT GETDATE(),
+    DateFin DATETIME NULL,
+    DateCreation DATETIME DEFAULT GETDATE(),
+    DateModification DATETIME DEFAULT GETDATE(),
+    Actif BIT DEFAULT 1,
+    
+    CONSTRAINT CHK_TypePrestation CHECK (TypePrestation IN ('EAU', 'TRANSPORT', 'CITERNAGE', 'VOL', 'ESSAI')),
+    CONSTRAINT CHK_PrixHT CHECK (PrixHT > 0),
+    CONSTRAINT CHK_TauxTVA CHECK (TauxTVA >= 0 AND TauxTVA <= 1)
+);
+PRINT 'âœ… Table Tarifs_Historique crÃ©Ã©e';
+GO
+
+-- ================================================================
+-- TABLE DES COMPTEURS
+-- ================================================================
+
 CREATE TABLE Compteurs (
-    CompteurID INT PRIMARY KEY IDENTITY(1,1),
-    TypeDocument VARCHAR(20) UNIQUE NOT NULL,      -- DEVIS, FACTURE, CLIENT
-    Prefixe VARCHAR(10) NOT NULL,
-    DernierNumero INT DEFAULT 0,
-    Annee INT NOT NULL,
-    FormatNumero VARCHAR(50) DEFAULT '00000',      -- Padding: 00001, 00002, etc.
-    ReinitialisationAnnuelle BIT DEFAULT 1,        -- Reset à chaque nouvelle année
-    DateDernierIncrement DATETIME NULL,
-    
-    CONSTRAINT CHK_TypeDocument CHECK (TypeDocument IN ('DEVIS', 'FACTURE', 'CLIENT', 'REGLEMENT'))
+    CompteurID INT PRIMARY KEY IDENTITY(1,1),
+    TypeDocument VARCHAR(20) UNIQUE NOT NULL,
+    Prefixe VARCHAR(10) NOT NULL,
+    DernierNumero INT DEFAULT 0,
+    Annee INT NOT NULL,
+    FormatNumero VARCHAR(50) DEFAULT '00000',
+    ReinitialisationAnnuelle BIT DEFAULT 1,
+    DateDernierIncrement DATETIME NULL,
+    
+    CONSTRAINT CHK_TypeDocument CHECK (TypeDocument IN ('DEVIS', 'FACTURE', 'CLIENT', 'REGLEMENT'))
 );
+PRINT 'âœ… Table Compteurs crÃ©Ã©e';
 GO
 
--- ============================================================================
--- TRIGGERS
--- ============================================================================
+-- ================================================================
+-- TABLE DES PARAMÃˆTRES ENTREPRISE
+-- ================================================================
 
--- Trigger pour mise à jour automatique de DateModification (ParametresEntreprise)
-CREATE TRIGGER trg_UpdateParamEntrepriseDate
-ON ParametresEntreprise
-AFTER UPDATE
+CREATE TABLE ParametresEntreprise (
+    ParamID INT PRIMARY KEY IDENTITY(1,1),
+    NomEntreprise NVARCHAR(200) NOT NULL,
+    AdresseSiegeSocial NVARCHAR(MAX) NULL,
+    TelephonePrincipal VARCHAR(20) NULL,
+    EmailPrincipal VARCHAR(100) NULL,
+    PrefixeEntreprise VARCHAR(10) NOT NULL DEFAULT 'ENT',
+    ExerciceComptable INT NOT NULL DEFAULT 2026,
+    DateCreation DATETIME DEFAULT GETDATE(),
+    DateModification DATETIME DEFAULT GETDATE(),
+    Actif BIT DEFAULT 1
+);
+PRINT 'âœ… Table ParametresEntreprise crÃ©Ã©e';
+GO
+
+-- ================================================================
+-- TABLE D'HISTORIQUE DES ACTIONS
+-- ================================================================
+
+CREATE TABLE HistoriqueActions (
+    ActionID INT PRIMARY KEY IDENTITY(1,1),
+    UserID INT NOT NULL,
+    TypeAction VARCHAR(50) NOT NULL,
+    TableCible VARCHAR(50) NULL,
+    IDCible INT NULL,
+    Description NVARCHAR(500) NULL,
+    DateAction DATETIME DEFAULT GETDATE(),
+    AdresseIP VARCHAR(50) NULL,
+    
+    CONSTRAINT FK_HistoriqueActions_Utilisateurs FOREIGN KEY (UserID) REFERENCES Utilisateurs(UserID)
+);
+PRINT 'âœ… Table HistoriqueActions crÃ©Ã©e';
+GO
+
+-- ================================================================
+-- CRÃ‰ATION DES INDEX
+-- ================================================================
+
+PRINT '';
+PRINT 'ðŸ“‘ CrÃ©ation des index...';
+
+CREATE INDEX IX_Clients_CodeClient ON Clients(CodeClient);
+CREATE INDEX IX_Clients_NomRaisonSociale ON Clients(NomRaisonSociale);
+CREATE INDEX IX_Devis_CodeDevis ON Devis(CodeDevis);
+CREATE INDEX IX_Ventes_ClientID ON Ventes(ClientID);
+CREATE INDEX IX_Ventes_DateVente ON Ventes(DateVente);
+CREATE INDEX IX_LignesVentes_VenteID ON LignesVentes(VenteID);
+CREATE INDEX IX_TarifsHisto_TypePrestation ON Tarifs_Historique(TypePrestation) WHERE Actif = 1;
+CREATE INDEX IX_Utilisateurs_Email ON Utilisateurs(Email) WHERE Actif = 1;
+
+PRINT 'âœ… Index crÃ©Ã©s avec succÃ¨s';
+GO
+
+-- ================================================================
+-- INSERTION DES DONNÃ‰ES INITIALES
+-- ================================================================
+
+PRINT '';
+PRINT 'ðŸ“Š Insertion des donnÃ©es initiales...';
+
+-- Insertion des rÃ´les
+INSERT INTO Roles (NomRole, Description, NiveauAcces, 
+                  PeutCreerDevis, PeutModifierDevis, PeutSupprimerDevis, PeutValiderDevis,
+                  PeutCreerFacture, PeutModifierFacture, PeutSupprimerFacture, PeutValiderFacture,
+                  PeutGererClients, PeutGererTarifs, PeutGererReglements, PeutVoirRapports, 
+                  PeutGererUtilisateurs, PeutModifierParametres)
+VALUES 
+    ('ADMINISTRATEUR', 'Administrateur systÃ¨me avec tous les droits', 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+    ('MANAGER', 'Manager avec droits Ã©tendus', 3, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0),
+    ('COMMERCIAL', 'Commercial - Gestion devis et factures', 2, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0),
+    ('CONSULTATION', 'Consultation uniquement', 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0);
+
+PRINT 'âœ… RÃ´les insÃ©rÃ©s';
+GO
+
+-- Insertion des compteurs
+INSERT INTO Compteurs (TypeDocument, Prefixe, DernierNumero, Annee, FormatNumero)
+VALUES 
+    ('DEVIS', 'DEV', 0, YEAR(GETDATE()), '00000'),
+    ('FACTURE', 'FAC', 0, YEAR(GETDATE()), '00000'),
+    ('CLIENT', 'CLI', 0, YEAR(GETDATE()), '00000'),
+    ('REGLEMENT', 'REG', 0, YEAR(GETDATE()), '00000');
+
+PRINT 'âœ… Compteurs initialisÃ©s';
+GO
+
+-- Insertion des paramÃ¨tres entreprise
+INSERT INTO ParametresEntreprise (NomEntreprise, AdresseSiegeSocial, TelephonePrincipal, 
+                                   EmailPrincipal, PrefixeEntreprise, ExerciceComptable)
+VALUES ('Entreprise de Gestion Eau', 'Adresse SiÃ¨ge Social', '0123456789', 
+        'contact@entreprise.com', 'GV', YEAR(GETDATE()));
+
+PRINT 'âœ… ParamÃ¨tres entreprise configurÃ©s';
+GO
+
+-- Insertion des utilisateurs
+DECLARE @RoleAdminID INT, @RoleManagerID INT, @RoleCommercialID INT, @RoleConsultationID INT;
+
+SELECT @RoleAdminID = RoleID FROM Roles WHERE NomRole = 'ADMINISTRATEUR';
+SELECT @RoleManagerID = RoleID FROM Roles WHERE NomRole = 'MANAGER';
+SELECT @RoleCommercialID = RoleID FROM Roles WHERE NomRole = 'COMMERCIAL';
+SELECT @RoleConsultationID = RoleID FROM Roles WHERE NomRole = 'CONSULTATION';
+
+-- Utilisateur Administrateur
+INSERT INTO Utilisateurs (CodeUtilisateur, Nom, Prenom, Email, MotDePasseHash, RoleID, Actif)
+VALUES ('ADMIN001', 'Administrateur', 'SystÃ¨me', 'admin@entreprise.com', 
+        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PZvO.S', @RoleAdminID, 1);
+
+-- Utilisateur Manager
+INSERT INTO Utilisateurs (CodeUtilisateur, Nom, Prenom, Email, MotDePasseHash, RoleID, Actif)
+VALUES ('MGR001', 'Manager', 'Principal', 'manager@entreprise.com', 
+        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PZvO.S', @RoleManagerID, 1);
+
+-- Utilisateur Commercial
+INSERT INTO Utilisateurs (CodeUtilisateur, Nom, Prenom, Email, MotDePasseHash, RoleID, Actif)
+VALUES ('COM001', 'Commercial', 'Un', 'commercial@entreprise.com', 
+        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PZvO.S', @RoleCommercialID, 1);
+
+-- Utilisateur Consultation
+INSERT INTO Utilisateurs (CodeUtilisateur, Nom, Prenom, Email, MotDePasseHash, RoleID, Actif)
+VALUES ('CONS001', 'Consultation', 'Utilisateur', 'consultation@entreprise.com', 
+        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PZvO.S', @RoleConsultationID, 1);
+
+PRINT 'âœ… Utilisateurs crÃ©Ã©s';
+GO
+
+-- ================================================================
+-- PROCÃ‰DURE STOCKÃ‰E : GÃ‰NÃ‰RATION CODE DEVIS
+-- ================================================================
+
+PRINT '';
+PRINT 'ðŸ”§ CrÃ©ation de la procÃ©dure stockÃ©e...';
+
+CREATE PROCEDURE sp_GenererCodeDevis
 AS
 BEGIN
-    UPDATE ParametresEntreprise
-    SET DateModification = GETDATE()
-    FROM ParametresEntreprise
-    INNER JOIN inserted ON ParametresEntreprise.ParamID = inserted.ParamID;
+    SET NOCOUNT ON;
+    
+    DECLARE @CodeDevis VARCHAR(50);
+    DECLARE @PrefixeEntreprise VARCHAR(10);
+    DECLARE @AnneeEnCours INT;
+    DECLARE @NouveauNumero INT;
+    DECLARE @NumeroFormate VARCHAR(10);
+    
+    -- Obtenir l'annÃ©e en cours
+    SET @AnneeEnCours = YEAR(GETDATE());
+    
+    -- Obtenir le prÃ©fixe de l'entreprise
+    SELECT TOP 1 @PrefixeEntreprise = PrefixeEntreprise 
+    FROM ParametresEntreprise 
+    WHERE Actif = 1
+    ORDER BY ParamID DESC;
+    
+    -- Si on ne trouve pas de prÃ©fixe, utiliser une valeur par dÃ©faut
+    IF @PrefixeEntreprise IS NULL
+        SET @PrefixeEntreprise = 'ENT';
+    
+    -- VÃ©rifier si un compteur existe pour les devis cette annÃ©e
+    IF NOT EXISTS (SELECT 1 FROM Compteurs WHERE TypeDocument = 'DEVIS' AND Annee = @AnneeEnCours)
+    BEGIN
+        -- CrÃ©er une nouvelle entrÃ©e pour cette annÃ©e
+        INSERT INTO Compteurs (TypeDocument, Prefixe, DernierNumero, Annee, FormatNumero, ReinitialisationAnnuelle)
+        VALUES ('DEVIS', @PrefixeEntreprise, 0, @AnneeEnCours, '0000', 1);
+        
+        SET @NouveauNumero = 1;
+    END
+    ELSE
+    BEGIN
+        -- VÃ©rifier si l'annÃ©e a changÃ©
+        DECLARE @AncienneAnnee INT;
+        SELECT @AncienneAnnee = Annee 
+        FROM Compteurs 
+        WHERE TypeDocument = 'DEVIS';
+        
+        -- Si l'annÃ©e a changÃ©, rÃ©initialiser le compteur
+        IF @AncienneAnnee < @AnneeEnCours
+        BEGIN
+            UPDATE Compteurs 
+            SET DernierNumero = 0, 
+                Annee = @AnneeEnCours,
+                Prefixe = @PrefixeEntreprise
+            WHERE TypeDocument = 'DEVIS';
+            
+            SET @NouveauNumero = 1;
+        END
+        ELSE
+        BEGIN
+            -- IncrÃ©menter le dernier numÃ©ro
+            UPDATE Compteurs 
+            SET DernierNumero = DernierNumero + 1,
+                DateDernierIncrement = GETDATE()
+            WHERE TypeDocument = 'DEVIS';
+            
+            SELECT @NouveauNumero = DernierNumero 
+            FROM Compteurs 
+            WHERE TypeDocument = 'DEVIS';
+        END
+    END
+    
+    -- Formater le numÃ©ro avec des zÃ©ros Ã  gauche (4 chiffres)
+    SET @NumeroFormate = RIGHT('0000' + CAST(@NouveauNumero AS VARCHAR(10)), 4);
+    
+    -- GÃ©nÃ©rer le code devis final au format XXXX/prefix/yyyy
+    SET @CodeDevis = @NumeroFormate + '/' + @PrefixeEntreprise + '/' + CAST(@AnneeEnCours AS VARCHAR(4));
+    
+    -- Retourner le code devis gÃ©nÃ©rÃ©
+    SELECT @CodeDevis AS CodeDevis;
 END;
 GO
 
--- Trigger pour mise à jour automatique de DateModification (Utilisateurs)
-CREATE TRIGGER trg_UpdateUtilisateurDate
-ON Utilisateurs
-AFTER UPDATE
-AS
-BEGIN
-    UPDATE Utilisateurs
-    SET DateModification = GETDATE()
-    FROM Utilisateurs
-    INNER JOIN inserted ON Utilisateurs.UserID = inserted.UserID;
-END;
+PRINT 'âœ… ProcÃ©dure sp_GenererCodeDevis crÃ©Ã©e';
 GO
 
--- ============================================================================
--- INDEX POUR OPTIMISATION DES PERFORMANCES
--- ============================================================================
+-- ================================================================
+-- RÃ‰SUMÃ‰ FINAL
+-- ================================================================
 
--- Index sur Email pour recherches rapides
-CREATE NONCLUSTERED INDEX IX_Utilisateurs_Email 
-ON Utilisateurs(Email) 
-WHERE Actif = 1;
-
--- Index sur CodeUtilisateur
-CREATE NONCLUSTERED INDEX IX_Utilisateurs_CodeUtilisateur 
-ON Utilisateurs(CodeUtilisateur) 
-WHERE Actif = 1;
-
--- Index sur les actions par utilisateur
-CREATE NONCLUSTERED INDEX IX_HistoriqueActions_UserID_Date 
-ON HistoriqueActions(UserID, DateAction DESC);
-
--- Index sur les types d'actions
-CREATE NONCLUSTERED INDEX IX_HistoriqueActions_TypeAction 
-ON HistoriqueActions(TypeAction, DateAction DESC);
-
+PRINT '';
+PRINT '================================================';
+PRINT 'âœ… BASE DE DONNÃ‰ES CRÃ‰Ã‰E AVEC SUCCÃˆS';
+PRINT '================================================';
+PRINT '';
+PRINT 'ðŸ“¦ Base de donnÃ©es : GestionEau';
+PRINT '';
+PRINT 'ðŸ“‹ Tables crÃ©Ã©es (10) :';
+PRINT '   1. Roles';
+PRINT '   2. Utilisateurs';
+PRINT '   3. Clients';
+PRINT '   4. Ventes';
+PRINT '   5. Devis';
+PRINT '   6. LignesVentes';
+PRINT '   7. Tarifs_Historique';
+PRINT '   8. Compteurs';
+PRINT '   9. ParametresEntreprise';
+PRINT '   10. HistoriqueActions';
+PRINT '';
+PRINT 'ðŸ”§ ProcÃ©dures stockÃ©es (1) :';
+PRINT '   â€¢ sp_GenererCodeDevis';
+PRINT '';
+PRINT 'ðŸ‘¥ Utilisateurs crÃ©Ã©s (4) :';
+PRINT '   â€¢ ADMIN001 / admin123 (Administrateur)';
+PRINT '   â€¢ MGR001 / admin123 (Manager)';
+PRINT '   â€¢ COM001 / admin123 (Commercial)';
+PRINT '   â€¢ CONS001 / admin123 (Consultation)';
+PRINT '';
+PRINT 'ðŸ“Š RÃ´les configurÃ©s (4) :';
+PRINT '   â€¢ ADMINISTRATEUR (Niveau 4)';
+PRINT '   â€¢ MANAGER (Niveau 3)';
+PRINT '   â€¢ COMMERCIAL (Niveau 2)';
+PRINT '   â€¢ CONSULTATION (Niveau 1)';
+PRINT '';
+PRINT '================================================';
+PRINT 'ðŸŽ¯ PrÃªt pour utilisation !';
+PRINT '================================================';
 GO
 
-/* =============================================================================
-COMMENTAIRES D'UTILISATION :
-
-1. ParametresEntreprise : 
-   - Stocker UNE SEULE ligne active (Actif=1) pour les paramètres en cours
-   - Historiser les anciennes configurations si besoin
-
-2. Roles :
-   - Créer des rôles standards : ADMIN, GESTIONNAIRE, COMPTABLE, COMMERCIAL, CONSULTATION
-
-3. Utilisateurs :
-   - JAMAIS stocker le mot de passe en clair
-   - Utiliser bcrypt ou Argon2 côté application React/Node.js
-   - Implémenter le verrouillage après 5 tentatives échouées
-
-4. HistoriqueActions :
-   - Logger toutes les actions critiques (création/modification/suppression)
-   - Conserver minimum 1 an pour audit
-
-5. Compteurs :
-   - Utiliser des transactions pour incrémenter de manière thread-safe
-   - Exemple de génération : FACT-2024-00001, FACT-2024-00002, etc.
-
-============================================================================= */
+-- Test de la procÃ©dure stockÃ©e
+PRINT '';
+PRINT 'ðŸ§ª Test de la procÃ©dure sp_GenererCodeDevis :';
+EXEC sp_GenererCodeDevis;
+PRINT '';
