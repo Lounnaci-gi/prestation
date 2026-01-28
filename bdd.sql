@@ -1,6 +1,6 @@
 -- ================================================================
--- SCRIPT DE CRÃ‰ATION COMPLÃˆTE - PROJET GESTION EAU
--- Base de donnÃ©es, Tables, ProcÃ©dures stockÃ©es et Utilisateurs
+-- SCRIPT DE CRÉATION COMPLÈTE - PROJET GESTION EAU
+-- Base de données, Tables, Procédures stockées et Utilisateurs
 -- Date: 2026-01-27
 -- ================================================================
 
@@ -8,18 +8,18 @@ USE master;
 GO
 
 -- ================================================================
--- CRÃ‰ATION DE LA BASE DE DONNÃ‰ES
+-- CRÉATION DE LA BASE DE DONNÉES
 -- ================================================================
 
 IF EXISTS (SELECT * FROM sys.databases WHERE name = 'GestionEau')
 BEGIN
     DROP DATABASE GestionEau;
-    PRINT 'ðŸ—‘ï¸  Ancienne base de donnÃ©es GestionEau supprimÃ©e';
+    PRINT 'Base de données GestionEau supprimée';
 END
 GO
 
 CREATE DATABASE GestionEau;
-PRINT 'âœ… Base de donnÃ©es GestionEau crÃ©Ã©e';
+PRINT 'Base de données GestionEau créée';
 GO
 
 USE GestionEau;
@@ -27,12 +27,12 @@ GO
 
 PRINT '';
 PRINT '================================================';
-PRINT 'ðŸš€ CRÃ‰ATION DES TABLES';
+PRINT 'CRÉATION DES TABLES';
 PRINT '================================================';
 PRINT '';
 
 -- ================================================================
--- TABLE DES RÃ”LES
+-- TABLE DES RÔLES
 -- ================================================================
 
 CREATE TABLE Roles (
@@ -53,7 +53,7 @@ CREATE TABLE Roles (
     PeutSupprimerFacture BIT DEFAULT 0,
     PeutValiderFacture BIT DEFAULT 0,
     
-    -- Permissions gÃ©nÃ©rales
+    -- Permissions générales
     PeutGererClients BIT DEFAULT 0,
     PeutGererTarifs BIT DEFAULT 0,
     PeutGererReglements BIT DEFAULT 0,
@@ -64,7 +64,7 @@ CREATE TABLE Roles (
     DateCreation DATETIME DEFAULT GETDATE(),
     Actif BIT DEFAULT 1
 );
-PRINT 'âœ… Table Roles crÃ©Ã©e';
+PRINT 'Table Roles créée';
 GO
 
 -- ================================================================
@@ -90,19 +90,19 @@ CREATE TABLE Utilisateurs (
     CompteVerrouille BIT DEFAULT 0,
     DateVerrouillage DATETIME NULL,
     
-    -- SÃ©curitÃ©
+    -- Sécurité
     TokenReinitialisation VARCHAR(255) NULL,
     DateExpirationToken DATETIME NULL,
     DeuxFacteursActif BIT DEFAULT 0,
     SecretDeuxFacteurs VARCHAR(100) NULL,
     
-    -- PrÃ©fÃ©rences
+    -- Préférences
     Langue VARCHAR(10) DEFAULT 'fr-DZ',
     Theme VARCHAR(20) DEFAULT 'light',
     FormatDate VARCHAR(20) DEFAULT 'dd/MM/yyyy',
     FormatNombre VARCHAR(20) DEFAULT 'fr-DZ',
     
-    -- MÃ©tadonnÃ©es
+    -- Métadonnées
     DateCreation DATETIME DEFAULT GETDATE(),
     DateModification DATETIME DEFAULT GETDATE(),
     CreePar INT NULL,
@@ -113,7 +113,7 @@ CREATE TABLE Utilisateurs (
     CONSTRAINT FK_Utilisateurs_Roles FOREIGN KEY (RoleID) REFERENCES Roles(RoleID),
     CONSTRAINT CHK_Email_Format CHECK (Email LIKE '%_@_%._%')
 );
-PRINT 'âœ… Table Utilisateurs crÃ©Ã©e';
+PRINT 'Table Utilisateurs créée';
 GO
 
 -- ================================================================
@@ -133,7 +133,7 @@ CREATE TABLE Clients (
     
     CONSTRAINT CHK_CodeClient_Length CHECK (LEN(CodeClient) = 6)
 );
-PRINT 'âœ… Table Clients crÃ©Ã©e';
+PRINT 'Table Clients créée';
 GO
 
 -- ================================================================
@@ -152,7 +152,7 @@ CREATE TABLE Ventes (
     CONSTRAINT FK_Ventes_Clients FOREIGN KEY (ClientID) REFERENCES Clients(ClientID),
     CONSTRAINT CHK_TypeDossier CHECK (TypeDossier IN ('CITERNAGE', 'PROCES_VOL', 'ESSAI_RESEAU'))
 );
-PRINT 'âœ… Table Ventes crÃ©Ã©e';
+PRINT 'Table Ventes créée';
 GO
 
 -- ================================================================
@@ -171,7 +171,7 @@ CREATE TABLE Devis (
     CONSTRAINT FK_Devis_Ventes FOREIGN KEY (VenteID) REFERENCES Ventes(VenteID),
     CONSTRAINT CHK_StatutDevis CHECK (Statut IN ('EN ATTENTE', 'VALIDE', 'ANNULE', 'FACTURE'))
 );
-PRINT 'âœ… Table Devis crÃ©Ã©e';
+PRINT 'Table Devis créée';
 GO
 
 -- ================================================================
@@ -193,7 +193,7 @@ CREATE TABLE LignesVentes (
     CONSTRAINT CHK_NombreCiternes CHECK (NombreCiternes >= 1),
     CONSTRAINT CHK_VolumeParCiterne CHECK (VolumeParCiterne >= 0 AND VolumeParCiterne <= 500)
 );
-PRINT 'âœ… Table LignesVentes crÃ©Ã©e';
+PRINT 'Table LignesVentes créée';
 GO
 
 -- ================================================================
@@ -216,7 +216,7 @@ CREATE TABLE Tarifs_Historique (
     CONSTRAINT CHK_PrixHT CHECK (PrixHT > 0),
     CONSTRAINT CHK_TauxTVA CHECK (TauxTVA >= 0 AND TauxTVA <= 1)
 );
-PRINT 'âœ… Table Tarifs_Historique crÃ©Ã©e';
+PRINT 'Table Tarifs_Historique créée';
 GO
 
 -- ================================================================
@@ -235,11 +235,11 @@ CREATE TABLE Compteurs (
     
     CONSTRAINT CHK_TypeDocument CHECK (TypeDocument IN ('DEVIS', 'FACTURE', 'CLIENT', 'REGLEMENT'))
 );
-PRINT 'âœ… Table Compteurs crÃ©Ã©e';
+PRINT 'Table Compteurs créée';
 GO
 
 -- ================================================================
--- TABLE DES PARAMÃˆTRES ENTREPRISE
+-- TABLE DES PARAMÈTRES ENTREPRISE
 -- ================================================================
 
 CREATE TABLE ParametresEntreprise (
@@ -254,7 +254,7 @@ CREATE TABLE ParametresEntreprise (
     DateModification DATETIME DEFAULT GETDATE(),
     Actif BIT DEFAULT 1
 );
-PRINT 'âœ… Table ParametresEntreprise crÃ©Ã©e';
+PRINT 'Table ParametresEntreprise créée';
 GO
 
 -- ================================================================
@@ -273,15 +273,15 @@ CREATE TABLE HistoriqueActions (
     
     CONSTRAINT FK_HistoriqueActions_Utilisateurs FOREIGN KEY (UserID) REFERENCES Utilisateurs(UserID)
 );
-PRINT 'âœ… Table HistoriqueActions crÃ©Ã©e';
+PRINT 'Table HistoriqueActions créée';
 GO
 
 -- ================================================================
--- CRÃ‰ATION DES INDEX
+-- CRÉATION DES INDEX
 -- ================================================================
 
 PRINT '';
-PRINT 'ðŸ“‘ CrÃ©ation des index...';
+PRINT 'Création des index...';
 
 CREATE INDEX IX_Clients_CodeClient ON Clients(CodeClient);
 CREATE INDEX IX_Clients_NomRaisonSociale ON Clients(NomRaisonSociale);
@@ -292,29 +292,29 @@ CREATE INDEX IX_LignesVentes_VenteID ON LignesVentes(VenteID);
 CREATE INDEX IX_TarifsHisto_TypePrestation ON Tarifs_Historique(TypePrestation) WHERE Actif = 1;
 CREATE INDEX IX_Utilisateurs_Email ON Utilisateurs(Email) WHERE Actif = 1;
 
-PRINT 'âœ… Index crÃ©Ã©s avec succÃ¨s';
+PRINT 'Index créés avec succès';
 GO
 
 -- ================================================================
--- INSERTION DES DONNÃ‰ES INITIALES
+-- INSERTION DES DONNÉES INITIALES
 -- ================================================================
 
 PRINT '';
-PRINT 'ðŸ“Š Insertion des donnÃ©es initiales...';
+PRINT 'Insertion des données initiales...';
 
--- Insertion des rÃ´les
+-- Insertion des rôles
 INSERT INTO Roles (NomRole, Description, NiveauAcces, 
                   PeutCreerDevis, PeutModifierDevis, PeutSupprimerDevis, PeutValiderDevis,
                   PeutCreerFacture, PeutModifierFacture, PeutSupprimerFacture, PeutValiderFacture,
                   PeutGererClients, PeutGererTarifs, PeutGererReglements, PeutVoirRapports, 
                   PeutGererUtilisateurs, PeutModifierParametres)
 VALUES 
-    ('ADMINISTRATEUR', 'Administrateur systÃ¨me avec tous les droits', 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
-    ('MANAGER', 'Manager avec droits Ã©tendus', 3, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0),
+    ('ADMINISTRATEUR', 'Administrateur système avec tous les droits', 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+    ('MANAGER', 'Manager avec droits étendus', 3, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0),
     ('COMMERCIAL', 'Commercial - Gestion devis et factures', 2, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0),
     ('CONSULTATION', 'Consultation uniquement', 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0);
 
-PRINT 'âœ… RÃ´les insÃ©rÃ©s';
+PRINT 'Rôles insérés';
 GO
 
 -- Insertion des compteurs
@@ -325,16 +325,16 @@ VALUES
     ('CLIENT', 'CLI', 0, YEAR(GETDATE()), '00000'),
     ('REGLEMENT', 'REG', 0, YEAR(GETDATE()), '00000');
 
-PRINT 'âœ… Compteurs initialisÃ©s';
+PRINT 'Compteurs initialisés';
 GO
 
--- Insertion des paramÃ¨tres entreprise
+-- Insertion des paramètres entreprise
 INSERT INTO ParametresEntreprise (NomEntreprise, AdresseSiegeSocial, TelephonePrincipal, 
                                    EmailPrincipal, PrefixeEntreprise, ExerciceComptable)
-VALUES ('Entreprise de Gestion Eau', 'Adresse SiÃ¨ge Social', '0123456789', 
+VALUES ('Entreprise de Gestion Eau', 'Adresse Siège Social', '0123456789', 
         'contact@entreprise.com', 'GV', YEAR(GETDATE()));
 
-PRINT 'âœ… ParamÃ¨tres entreprise configurÃ©s';
+PRINT 'Paramètres entreprise configurés';
 GO
 
 -- Insertion des utilisateurs
@@ -347,7 +347,7 @@ SELECT @RoleConsultationID = RoleID FROM Roles WHERE NomRole = 'CONSULTATION';
 
 -- Utilisateur Administrateur
 INSERT INTO Utilisateurs (CodeUtilisateur, Nom, Prenom, Email, MotDePasseHash, RoleID, Actif)
-VALUES ('ADMIN001', 'Administrateur', 'SystÃ¨me', 'admin@entreprise.com', 
+VALUES ('ADMIN001', 'Administrateur', 'Système', 'admin@entreprise.com', 
         '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PZvO.S', @RoleAdminID, 1);
 
 -- Utilisateur Manager
@@ -365,15 +365,16 @@ INSERT INTO Utilisateurs (CodeUtilisateur, Nom, Prenom, Email, MotDePasseHash, R
 VALUES ('CONS001', 'Consultation', 'Utilisateur', 'consultation@entreprise.com', 
         '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PZvO.S', @RoleConsultationID, 1);
 
-PRINT 'âœ… Utilisateurs crÃ©Ã©s';
+PRINT 'Utilisateurs créés';
 GO
 
 -- ================================================================
--- PROCÃ‰DURE STOCKÃ‰E : GÃ‰NÃ‰RATION CODE DEVIS
+-- PROCÉDURE STOCKÉE : GÉNÉRATION CODE DEVIS
 -- ================================================================
 
 PRINT '';
-PRINT 'ðŸ”§ CrÃ©ation de la procÃ©dure stockÃ©e...';
+PRINT 'Création de la procédure stockée...';
+GO
 
 CREATE PROCEDURE sp_GenererCodeDevis
 AS
@@ -386,23 +387,23 @@ BEGIN
     DECLARE @NouveauNumero INT;
     DECLARE @NumeroFormate VARCHAR(10);
     
-    -- Obtenir l'annÃ©e en cours
+    -- Obtenir l'année en cours
     SET @AnneeEnCours = YEAR(GETDATE());
     
-    -- Obtenir le prÃ©fixe de l'entreprise
+    -- Obtenir le préfixe de l'entreprise
     SELECT TOP 1 @PrefixeEntreprise = PrefixeEntreprise 
     FROM ParametresEntreprise 
     WHERE Actif = 1
     ORDER BY ParamID DESC;
     
-    -- Si on ne trouve pas de prÃ©fixe, utiliser une valeur par dÃ©faut
+    -- Si on ne trouve pas de préfixe, utiliser une valeur par défaut
     IF @PrefixeEntreprise IS NULL
         SET @PrefixeEntreprise = 'ENT';
     
-    -- VÃ©rifier si un compteur existe pour les devis cette annÃ©e
+    -- Vérifier si un compteur existe pour les devis cette année
     IF NOT EXISTS (SELECT 1 FROM Compteurs WHERE TypeDocument = 'DEVIS' AND Annee = @AnneeEnCours)
     BEGIN
-        -- CrÃ©er une nouvelle entrÃ©e pour cette annÃ©e
+        -- Créer une nouvelle entrée pour cette année
         INSERT INTO Compteurs (TypeDocument, Prefixe, DernierNumero, Annee, FormatNumero, ReinitialisationAnnuelle)
         VALUES ('DEVIS', @PrefixeEntreprise, 0, @AnneeEnCours, '0000', 1);
         
@@ -410,13 +411,13 @@ BEGIN
     END
     ELSE
     BEGIN
-        -- VÃ©rifier si l'annÃ©e a changÃ©
+        -- Vérifier si l'année a changé
         DECLARE @AncienneAnnee INT;
         SELECT @AncienneAnnee = Annee 
         FROM Compteurs 
         WHERE TypeDocument = 'DEVIS';
         
-        -- Si l'annÃ©e a changÃ©, rÃ©initialiser le compteur
+        -- Si l'année a changé, réinitialiser le compteur
         IF @AncienneAnnee < @AnneeEnCours
         BEGIN
             UPDATE Compteurs 
@@ -429,7 +430,7 @@ BEGIN
         END
         ELSE
         BEGIN
-            -- IncrÃ©menter le dernier numÃ©ro
+            -- Incrémenter le dernier numéro
             UPDATE Compteurs 
             SET DernierNumero = DernierNumero + 1,
                 DateDernierIncrement = GETDATE()
@@ -441,32 +442,32 @@ BEGIN
         END
     END
     
-    -- Formater le numÃ©ro avec des zÃ©ros Ã  gauche (4 chiffres)
+    -- Formater le numéro avec des zéros à gauche (4 chiffres)
     SET @NumeroFormate = RIGHT('0000' + CAST(@NouveauNumero AS VARCHAR(10)), 4);
     
-    -- GÃ©nÃ©rer le code devis final au format XXXX/prefix/yyyy
+    -- Générer le code devis final au format XXXX/prefix/yyyy
     SET @CodeDevis = @NumeroFormate + '/' + @PrefixeEntreprise + '/' + CAST(@AnneeEnCours AS VARCHAR(4));
     
-    -- Retourner le code devis gÃ©nÃ©rÃ©
+    -- Retourner le code devis généré
     SELECT @CodeDevis AS CodeDevis;
 END;
 GO
 
-PRINT 'âœ… ProcÃ©dure sp_GenererCodeDevis crÃ©Ã©e';
+PRINT 'Procédure sp_GenererCodeDevis créée';
 GO
 
 -- ================================================================
--- RÃ‰SUMÃ‰ FINAL
+-- RÉSUMÉ FINAL
 -- ================================================================
 
 PRINT '';
 PRINT '================================================';
-PRINT 'âœ… BASE DE DONNÃ‰ES CRÃ‰Ã‰E AVEC SUCCÃˆS';
+PRINT 'BASE DE DONNÉES CRÉÉE AVEC SUCCÈS';
 PRINT '================================================';
 PRINT '';
-PRINT 'ðŸ“¦ Base de donnÃ©es : GestionEau';
+PRINT 'Base de données : GestionEau';
 PRINT '';
-PRINT 'ðŸ“‹ Tables crÃ©Ã©es (10) :';
+PRINT 'Tables créées (10) :';
 PRINT '   1. Roles';
 PRINT '   2. Utilisateurs';
 PRINT '   3. Clients';
@@ -478,28 +479,28 @@ PRINT '   8. Compteurs';
 PRINT '   9. ParametresEntreprise';
 PRINT '   10. HistoriqueActions';
 PRINT '';
-PRINT 'ðŸ”§ ProcÃ©dures stockÃ©es (1) :';
-PRINT '   â€¢ sp_GenererCodeDevis';
+PRINT 'Procédures stockées (1) :';
+PRINT '   - sp_GenererCodeDevis';
 PRINT '';
-PRINT 'ðŸ‘¥ Utilisateurs crÃ©Ã©s (4) :';
-PRINT '   â€¢ ADMIN001 / admin123 (Administrateur)';
-PRINT '   â€¢ MGR001 / admin123 (Manager)';
-PRINT '   â€¢ COM001 / admin123 (Commercial)';
-PRINT '   â€¢ CONS001 / admin123 (Consultation)';
+PRINT 'Utilisateurs créés (4) :';
+PRINT '   - ADMIN001 / admin123 (Administrateur)';
+PRINT '   - MGR001 / admin123 (Manager)';
+PRINT '   - COM001 / admin123 (Commercial)';
+PRINT '   - CONS001 / admin123 (Consultation)';
 PRINT '';
-PRINT 'ðŸ“Š RÃ´les configurÃ©s (4) :';
-PRINT '   â€¢ ADMINISTRATEUR (Niveau 4)';
-PRINT '   â€¢ MANAGER (Niveau 3)';
-PRINT '   â€¢ COMMERCIAL (Niveau 2)';
-PRINT '   â€¢ CONSULTATION (Niveau 1)';
+PRINT 'Rôles configurés (4) :';
+PRINT '   - ADMINISTRATEUR (Niveau 4)';
+PRINT '   - MANAGER (Niveau 3)';
+PRINT '   - COMMERCIAL (Niveau 2)';
+PRINT '   - CONSULTATION (Niveau 1)';
 PRINT '';
 PRINT '================================================';
-PRINT 'ðŸŽ¯ PrÃªt pour utilisation !';
+PRINT 'Prêt pour utilisation !';
 PRINT '================================================';
 GO
 
--- Test de la procÃ©dure stockÃ©e
+-- Test de la procédure stockée
 PRINT '';
-PRINT 'ðŸ§ª Test de la procÃ©dure sp_GenererCodeDevis :';
+PRINT 'Test de la procédure sp_GenererCodeDevis :';
 EXEC sp_GenererCodeDevis;
 PRINT '';
