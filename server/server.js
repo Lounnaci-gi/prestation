@@ -5,9 +5,31 @@ const cors = require('cors');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken'); // Ajout de JWT pour l'authentification
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Sécurité avec Helmet
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
+
+// Limiteur de débit pour empêcher les attaques par force brute
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limite chaque IP à 100 requêtes par fenêtre de 15 minutes
+  message: 'Trop de requêtes depuis cette adresse IP, veuillez réessayer plus tard.'
+});
+app.use(limiter);
 
 // Middleware CORS pour autoriser les requêtes depuis le frontend
 app.use(cors({
@@ -99,6 +121,121 @@ connection.on('connect', (err) => {
     isConnected = true;
   }
 });
+
+// Données de test pour le mode simulation
+const mockUsers = [
+  {
+    UserID: 1,
+    CodeUtilisateur: 'ADMIN001',
+    Nom: 'Administrateur',
+    Prenom: 'Système',
+    Email: 'admin@entreprise.com',
+    MotDePasseHash: '$2b$12$vpSBzorr4hOXDyRpW7DW/uBEcw4B2UJVomLAprMrvkjllqEY/HIhK', // admin123
+    Actif: 1,
+    RoleID: 1,
+    NomRole: 'ADMINISTRATEUR',
+    NiveauAcces: 4,
+    PeutCreerDevis: 1,
+    PeutModifierDevis: 1,
+    PeutSupprimerDevis: 1,
+    PeutValiderDevis: 1,
+    PeutCreerFacture: 1,
+    PeutModifierFacture: 1,
+    PeutSupprimerFacture: 1,
+    PeutValiderFacture: 1,
+    PeutGererClients: 1,
+    PeutGererTarifs: 1,
+    PeutGererReglements: 1,
+    PeutVoirRapports: 1,
+    PeutGererUtilisateurs: 1,
+    PeutModifierParametres: 1
+  },
+  {
+    UserID: 2,
+    CodeUtilisateur: 'MGR001',
+    Nom: 'Manager',
+    Prenom: 'Principal',
+    Email: 'manager@entreprise.com',
+    MotDePasseHash: '$2b$12$vpSBzorr4hOXDyRpW7DW/uBEcw4B2UJVomLAprMrvkjllqEY/HIhK', // admin123
+    Actif: 1,
+    RoleID: 2,
+    NomRole: 'MANAGER',
+    NiveauAcces: 3,
+    PeutCreerDevis: 1,
+    PeutModifierDevis: 1,
+    PeutSupprimerDevis: 1,
+    PeutValiderDevis: 1,
+    PeutCreerFacture: 1,
+    PeutModifierFacture: 1,
+    PeutSupprimerFacture: 0,
+    PeutValiderFacture: 1,
+    PeutGererClients: 1,
+    PeutGererTarifs: 1,
+    PeutGererReglements: 1,
+    PeutVoirRapports: 1,
+    PeutGererUtilisateurs: 0,
+    PeutModifierParametres: 0
+  },
+  {
+    UserID: 3,
+    CodeUtilisateur: 'COM001',
+    Nom: 'Commercial',
+    Prenom: 'Un',
+    Email: 'commercial@entreprise.com',
+    MotDePasseHash: '$2b$12$vpSBzorr4hOXDyRpW7DW/uBEcw4B2UJVomLAprMrvkjllqEY/HIhK', // admin123
+    Actif: 1,
+    RoleID: 3,
+    NomRole: 'COMMERCIAL',
+    NiveauAcces: 2,
+    PeutCreerDevis: 1,
+    PeutModifierDevis: 1,
+    PeutSupprimerDevis: 0,
+    PeutValiderDevis: 0,
+    PeutCreerFacture: 1,
+    PeutModifierFacture: 1,
+    PeutSupprimerFacture: 0,
+    PeutValiderFacture: 0,
+    PeutGererClients: 1,
+    PeutGererTarifs: 0,
+    PeutGererReglements: 0,
+    PeutVoirRapports: 1,
+    PeutGererUtilisateurs: 0,
+    PeutModifierParametres: 0
+  },
+  {
+    UserID: 4,
+    CodeUtilisateur: 'CONS001',
+    Nom: 'Consultation',
+    Prenom: 'Utilisateur',
+    Email: 'consultation@entreprise.com',
+    MotDePasseHash: '$2b$12$vpSBzorr4hOXDyRpW7DW/uBEcw4B2UJVomLAprMrvkjllqEY/HIhK', // admin123
+    Actif: 1,
+    RoleID: 4,
+    NomRole: 'CONSULTATION',
+    NiveauAcces: 1,
+    PeutCreerDevis: 0,
+    PeutModifierDevis: 0,
+    PeutSupprimerDevis: 0,
+    PeutValiderDevis: 0,
+    PeutCreerFacture: 0,
+    PeutModifierFacture: 0,
+    PeutSupprimerFacture: 0,
+    PeutValiderFacture: 0,
+    PeutGererClients: 0,
+    PeutGererTarifs: 0,
+    PeutGererReglements: 0,
+    PeutVoirRapports: 1,
+    PeutGererUtilisateurs: 0,
+    PeutModifierParametres: 0
+  }
+];
+
+// Fonction pour trouver un utilisateur dans les données de test
+const findMockUser = (username) => {
+  return mockUsers.find(user => 
+    user.CodeUtilisateur === username || user.Email === username
+  );
+};
 
 // Gestion des erreurs de connexion
 connection.on('end', () => {
@@ -607,11 +744,39 @@ app.get('/api/clients', (req, res) => {
 
 // Endpoint pour créer un nouveau client
 app.post('/api/clients', async (req, res) => {
-  const { CodeClient, NomRaisonSociale, Adresse, Telephone, Email } = req.body;
-
+  let { CodeClient, NomRaisonSociale, Adresse, Telephone, Email } = req.body;
+  
+  // Sanitization basique des entrées
+  CodeClient = CodeClient ? CodeClient.toString().trim() : '';
+  NomRaisonSociale = NomRaisonSociale ? NomRaisonSociale.toString().trim() : '';
+  Adresse = Adresse ? Adresse.toString().trim() : '';
+  Telephone = Telephone ? Telephone.toString().trim() : '';
+  Email = Email ? Email.toString().trim() : '';
+  
   // Validation des données requises
   if (!CodeClient || !NomRaisonSociale || !Adresse) {
     return res.status(400).json({ error: 'Code client, nom/raison sociale et adresse sont requis' });
+  }
+  
+  // Validation de la longueur des champs pour prévenir les attaques
+  if (CodeClient.length > 20 || NomRaisonSociale.length > 200 || Adresse.length > 500 || Telephone.length > 20 || Email.length > 100) {
+    return res.status(400).json({ error: 'Un ou plusieurs champs sont trop longs' });
+  }
+  
+  // Validation du format de l'email si fourni
+  if (Email && Email.length > 0) {
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    if (!emailRegex.test(Email)) {
+      return res.status(400).json({ error: 'Format d\'email invalide' });
+    }
+  }
+  
+  // Validation du format du téléphone si fourni
+  if (Telephone && Telephone.length > 0) {
+    const phoneRegex = /^\+?[0-9\-\s()]{7,15}$/;
+    if (!phoneRegex.test(Telephone)) {
+      return res.status(400).json({ error: 'Format de téléphone invalide' });
+    }
   }
 
   try {
@@ -1495,11 +1660,39 @@ app.get('/api/test', (req, res) => {
 
 // Endpoint pour l'inscription d'un nouvel utilisateur
 app.post('/api/register', async (req, res) => {
-  const { nom, prenom, email, password } = req.body;
-
+  let { nom, prenom, email, password } = req.body;
+  
+  // Sanitization basique des entrées
+  nom = nom ? nom.toString().trim() : '';
+  prenom = prenom ? prenom.toString().trim() : '';
+  email = email ? email.toString().trim() : '';
+  password = password ? password.toString() : '';
+  
   // Validation des données requises
   if (!nom || !prenom || !email || !password) {
     return res.status(400).json({ error: 'Nom, prénom, email et mot de passe sont requis' });
+  }
+  
+  // Validation de la longueur des champs pour prévenir les attaques
+  if (nom.length > 100 || prenom.length > 100 || email.length > 100 || password.length > 100) {
+    return res.status(400).json({ error: 'Un ou plusieurs champs sont trop longs' });
+  }
+  
+  // Validation du format de l'email
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Format d\'email invalide' });
+  }
+  
+  // Validation de la force du mot de passe
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
+  }
+  
+  // Vérifier si le mot de passe contient au moins une majuscule, une minuscule et un chiffre
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({ error: 'Le mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre' });
   }
 
   try {
@@ -1579,8 +1772,30 @@ app.post('/api/register', async (req, res) => {
 
 // Endpoint pour l'authentification des utilisateurs
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
+  let { username, password } = req.body;
   const clientIP = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || 'unknown';
+  
+  // Sanitization basique des entrées
+  username = username ? username.toString().trim() : '';
+  password = password ? password.toString() : '';
+  
+  // Validation des entrées
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Identifiant et mot de passe sont requis' });
+  }
+  
+  // Validation de la longueur des champs pour prévenir les attaques
+  if (username.length > 100 || password.length > 100) {
+    return res.status(400).json({ error: 'Identifiant ou mot de passe trop long' });
+  }
+  
+  // Validation du format de l'email si c'est un email
+  if (username.includes('@')) {
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    if (!emailRegex.test(username)) {
+      return res.status(400).json({ error: 'Format d\'email invalide' });
+    }
+  }
 
   // Validation des données requises
   if (!username || !password) {
@@ -1607,25 +1822,42 @@ app.post('/api/login', async (req, res) => {
       { name: 'username', type: 'varchar', value: username }
     ];
 
-    const results = await new Promise((resolve, reject) => {
-      executeQuery(query, params, (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
+    let results;
+    let lockoutResults;
+    
+    if (isConnected) {
+      // Mode connecté - utiliser la base de données réelle
+      results = await new Promise((resolve, reject) => {
+        executeQuery(query, params, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
       });
-    });
 
-    // Vérifier si le compte est verrouillé (par trop de tentatives échouées)
-    const checkLockoutQuery = `SELECT CompteVerrouille, DateVerrouillage, NombreTentativesEchec FROM Utilisateurs WHERE (CodeUtilisateur = @username OR Email = @username)`;
-    const checkLockoutParams = [
-      { name: 'username', type: 'varchar', value: username }
-    ];
+      // Vérifier si le compte est verrouillé (par trop de tentatives échouées)
+      const checkLockoutQuery = `SELECT CompteVerrouille, DateVerrouillage, NombreTentativesEchec FROM Utilisateurs WHERE (CodeUtilisateur = @username OR Email = @username)`;
+      const checkLockoutParams = [
+        { name: 'username', type: 'varchar', value: username }
+      ];
 
-    const lockoutResults = await new Promise((resolve, reject) => {
-      executeQuery(checkLockoutQuery, checkLockoutParams, (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
+      lockoutResults = await new Promise((resolve, reject) => {
+        executeQuery(checkLockoutQuery, checkLockoutParams, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
       });
-    });
+    } else {
+      // Mode simulation - utiliser les données de test
+      const mockUser = findMockUser(username);
+      results = mockUser ? [mockUser] : [];
+      
+      // Pour le mode simulation, on n'a pas de verrouillage
+      lockoutResults = [{
+        CompteVerrouille: 0,
+        DateVerrouillage: null,
+        NombreTentativesEchec: 0
+      }];
+    }
 
     // Vérifier si le compte est verrouillé
     if (lockoutResults && lockoutResults.length > 0) {
@@ -1731,6 +1963,7 @@ app.post('/api/login', async (req, res) => {
     const user = results[0];
     
     // Vérifier le mot de passe avec bcrypt (SECURISE)
+    // Dans le mode simulation, on utilise les données de test
     const isPasswordValid = await bcrypt.compare(password, user.MotDePasseHash);
     
     if (!isPasswordValid) {
@@ -2058,16 +2291,43 @@ app.put('/api/users/profile', async (req, res) => {
 
 // Endpoint pour changer le mot de passe
 app.put('/api/users/change-password', async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  const userId = req.query.userId; // ou récupéré d'un token JWT
+  let { currentPassword, newPassword } = req.body;
+  let userId = req.query.userId; // ou récupéré d'un token JWT
+  
+  // Sanitization basique des entrées
+  currentPassword = currentPassword ? currentPassword.toString() : '';
+  newPassword = newPassword ? newPassword.toString() : '';
+  userId = userId ? userId.toString() : '';
   
   // Validation des données requises
   if (!userId || !currentPassword || !newPassword) {
     return res.status(400).json({ error: 'ID utilisateur, mot de passe actuel et nouveau mot de passe sont requis' });
   }
   
-  if (newPassword.length < 6) {
-    return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 6 caractères' });
+  // Validation de la longueur des champs pour prévenir les attaques
+  if (currentPassword.length > 100 || newPassword.length > 100 || userId.length > 20) {
+    return res.status(400).json({ error: 'Un ou plusieurs champs sont trop longs' });
+  }
+  
+  // Vérification que userId est un nombre entier
+  if (!Number.isInteger(Number(userId))) {
+    return res.status(400).json({ error: 'ID utilisateur invalide' });
+  }
+  
+  // Validation de la force du nouveau mot de passe
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 8 caractères' });
+  }
+  
+  // Vérifier si le nouveau mot de passe contient au moins une majuscule, une minuscule et un chiffre
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+  if (!passwordRegex.test(newPassword)) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre' });
+  }
+  
+  // Empêcher l'utilisation du même mot de passe
+  if (currentPassword === newPassword) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit être différent de l\'ancien' });
   }
   
   try {
