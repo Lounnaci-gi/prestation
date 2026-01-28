@@ -73,6 +73,10 @@ const Parametres = () => {
     volumeReference: '',
     dateDebut: ''
   });
+  
+  // États pour le masquage/affichage des sections
+  const [showEntrepriseSection, setShowEntrepriseSection] = useState(true);
+  const [showTarifsSection, setShowTarifsSection] = useState(true);
 
   // Charger les données depuis la base de données
   useEffect(() => {
@@ -191,6 +195,76 @@ const Parametres = () => {
 
   // Fonction pour mettre à jour un champ des paramètres entreprise
   const handleChangeParametreEntreprise = (fieldName, value) => {
+    // Validation spécifique pour le Registre de Commerce
+    if (fieldName === 'NumeroRegistreCommerce') {
+      // Ne garder que les chiffres
+      const numericValue = value.replace(/[^0-9]/g, '');
+      // Limiter à 11 chiffres
+      if (numericValue.length <= 11) {
+        setParametresEntreprise(prev => ({
+          ...prev,
+          [fieldName]: numericValue
+        }));
+      }
+      return;
+    }
+    
+    // Validation spécifique pour le Numéro d'Identification Fiscale
+    if (fieldName === 'NumeroIdentificationFiscale') {
+      // Ne garder que les chiffres
+      const numericValue = value.replace(/[^0-9]/g, '');
+      // Limiter à 15 chiffres
+      if (numericValue.length <= 15) {
+        setParametresEntreprise(prev => ({
+          ...prev,
+          [fieldName]: numericValue
+        }));
+      }
+      return;
+    }
+    
+    // Validation spécifique pour le N° Article d'Imposition
+    if (fieldName === 'NumeroArticleImposition') {
+      // Ne garder que les chiffres
+      const numericValue = value.replace(/[^0-9]/g, '');
+      // Limiter à 11 chiffres
+      if (numericValue.length <= 11) {
+        setParametresEntreprise(prev => ({
+          ...prev,
+          [fieldName]: numericValue
+        }));
+      }
+      return;
+    }
+    
+    // Validation spécifique pour le Code Postal
+    if (fieldName === 'CodePostal') {
+      // Ne garder que les chiffres
+      const numericValue = value.replace(/[^0-9]/g, '');
+      // Limiter à 5 chiffres
+      if (numericValue.length <= 5) {
+        setParametresEntreprise(prev => ({
+          ...prev,
+          [fieldName]: numericValue
+        }));
+      }
+      return;
+    }
+    
+    // Validation spécifique pour les numéros de téléphone et fax
+    if (['TelephonePrincipal', 'TelephoneSecondaire', 'Fax'].includes(fieldName)) {
+      // Ne garder que les chiffres
+      const numericValue = value.replace(/[^0-9]/g, '');
+      // Limiter à 10 chiffres
+      if (numericValue.length <= 10) {
+        setParametresEntreprise(prev => ({
+          ...prev,
+          [fieldName]: numericValue
+        }));
+      }
+      return;
+    }
+    
     setParametresEntreprise(prev => ({
       ...prev,
       [fieldName]: value
@@ -455,8 +529,33 @@ const Parametres = () => {
       </div>
 
       {/* CARD PARAMÈTRES ENTREPRISE */}
-      <Card title="Paramètres Entreprise" style={{ marginTop: '1rem' }}>
-        <div className="entreprise-section">
+      <Card 
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <span>Paramètres Entreprise</span>
+            <button 
+              className="toggle-button"
+              onClick={() => setShowEntrepriseSection(!showEntrepriseSection)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1.5rem',
+                padding: '0.5rem',
+                borderRadius: '4px',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f0f0f0'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              {showEntrepriseSection ? '▼' : '▶'}
+            </button>
+          </div>
+        } 
+        style={{ marginTop: '1rem' }}
+      >
+        {showEntrepriseSection && (
+          <div className="entreprise-section">
           <div className="form-section">
             <h4>Informations Générales</h4>
             <div className="form-grid">
@@ -489,35 +588,77 @@ const Parametres = () => {
 
               <div className="setting-item">
                 <label className="setting-label">Registre de Commerce</label>
-                <input 
-                  type="text" 
-                  className="setting-input" 
-                  value={parametresEntreprise.NumeroRegistreCommerce || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('NumeroRegistreCommerce', e.target.value)}
-                  placeholder="RC"
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    className="setting-input" 
+                    value={parametresEntreprise.NumeroRegistreCommerce || ''}
+                    onChange={(e) => handleChangeParametreEntreprise('NumeroRegistreCommerce', e.target.value)}
+                    placeholder="RC"
+                    maxLength="11"
+                  />
+                  <div style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    fontSize: '0.8rem', 
+                    color: '#666',
+                    pointerEvents: 'none'
+                  }}>
+                    {parametresEntreprise.NumeroRegistreCommerce?.length || 0}/11
+                  </div>
+                </div>
               </div>
 
               <div className="setting-item">
                 <label className="setting-label">Numéro d'Identification Fiscale</label>
-                <input 
-                  type="text" 
-                  className="setting-input" 
-                  value={parametresEntreprise.NumeroIdentificationFiscale || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('NumeroIdentificationFiscale', e.target.value)}
-                  placeholder="NIF"
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    className="setting-input" 
+                    value={parametresEntreprise.NumeroIdentificationFiscale || ''}
+                    onChange={(e) => handleChangeParametreEntreprise('NumeroIdentificationFiscale', e.target.value)}
+                    placeholder="NIF"
+                    maxLength="15"
+                  />
+                  <div style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    fontSize: '0.8rem', 
+                    color: '#666',
+                    pointerEvents: 'none'
+                  }}>
+                    {parametresEntreprise.NumeroIdentificationFiscale?.length || 0}/15
+                  </div>
+                </div>
               </div>
 
               <div className="setting-item">
                 <label className="setting-label">N° Article d'Imposition</label>
-                <input 
-                  type="text" 
-                  className="setting-input" 
-                  value={parametresEntreprise.NumeroArticleImposition || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('NumeroArticleImposition', e.target.value)}
-                  placeholder="Article d'imposition"
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    className="setting-input" 
+                    value={parametresEntreprise.NumeroArticleImposition || ''}
+                    onChange={(e) => handleChangeParametreEntreprise('NumeroArticleImposition', e.target.value)}
+                    placeholder="Article d'imposition"
+                    maxLength="11"
+                  />
+                  <div style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    fontSize: '0.8rem', 
+                    color: '#666',
+                    pointerEvents: 'none'
+                  }}>
+                    {parametresEntreprise.NumeroArticleImposition?.length || 0}/11
+                  </div>
+                </div>
               </div>
 
               <div className="setting-item">
@@ -556,13 +697,27 @@ const Parametres = () => {
 
               <div className="setting-item">
                 <label className="setting-label">Code Postal</label>
-                <input 
-                  type="text" 
-                  className="setting-input" 
-                  value={parametresEntreprise.CodePostal || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('CodePostal', e.target.value)}
-                  placeholder="Code postal"
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    className="setting-input" 
+                    value={parametresEntreprise.CodePostal || ''}
+                    onChange={(e) => handleChangeParametreEntreprise('CodePostal', e.target.value)}
+                    placeholder="Code postal"
+                    maxLength="5"
+                  />
+                  <div style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    fontSize: '0.8rem', 
+                    color: '#666',
+                    pointerEvents: 'none'
+                  }}>
+                    {parametresEntreprise.CodePostal?.length || 0}/5
+                  </div>
+                </div>
               </div>
 
               <div className="setting-item">
@@ -583,35 +738,77 @@ const Parametres = () => {
             <div className="form-grid">
               <div className="setting-item">
                 <label className="setting-label">Téléphone Principal <span style={{color: 'red'}}>*</span></label>
-                <input 
-                  type="tel" 
-                  className="setting-input" 
-                  value={parametresEntreprise.TelephonePrincipal}
-                  onChange={(e) => handleChangeParametreEntreprise('TelephonePrincipal', e.target.value)}
-                  placeholder="+213 xxx xxxx xxx"
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="tel" 
+                    className="setting-input" 
+                    value={parametresEntreprise.TelephonePrincipal}
+                    onChange={(e) => handleChangeParametreEntreprise('TelephonePrincipal', e.target.value)}
+                    placeholder="+213 xxx xxxx xxx"
+                    maxLength="10"
+                  />
+                  <div style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    fontSize: '0.8rem', 
+                    color: '#666',
+                    pointerEvents: 'none'
+                  }}>
+                    {parametresEntreprise.TelephonePrincipal?.length || 0}/10
+                  </div>
+                </div>
               </div>
 
               <div className="setting-item">
                 <label className="setting-label">Téléphone Secondaire</label>
-                <input 
-                  type="tel" 
-                  className="setting-input" 
-                  value={parametresEntreprise.TelephoneSecondaire || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('TelephoneSecondaire', e.target.value)}
-                  placeholder="Téléphone secondaire"
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="tel" 
+                    className="setting-input" 
+                    value={parametresEntreprise.TelephoneSecondaire || ''}
+                    onChange={(e) => handleChangeParametreEntreprise('TelephoneSecondaire', e.target.value)}
+                    placeholder="Téléphone secondaire"
+                    maxLength="10"
+                  />
+                  <div style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    fontSize: '0.8rem', 
+                    color: '#666',
+                    pointerEvents: 'none'
+                  }}>
+                    {parametresEntreprise.TelephoneSecondaire?.length || 0}/10
+                  </div>
+                </div>
               </div>
 
               <div className="setting-item">
                 <label className="setting-label">Fax</label>
-                <input 
-                  type="text" 
-                  className="setting-input" 
-                  value={parametresEntreprise.Fax || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('Fax', e.target.value)}
-                  placeholder="Fax"
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    className="setting-input" 
+                    value={parametresEntreprise.Fax || ''}
+                    onChange={(e) => handleChangeParametreEntreprise('Fax', e.target.value)}
+                    placeholder="Fax"
+                    maxLength="10"
+                  />
+                  <div style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    fontSize: '0.8rem', 
+                    color: '#666',
+                    pointerEvents: 'none'
+                  }}>
+                    {parametresEntreprise.Fax?.length || 0}/10
+                  </div>
+                </div>
               </div>
 
               <div className="setting-item">
@@ -869,11 +1066,37 @@ const Parametres = () => {
             </button>
           </div>
         </div>
+        )}
       </Card>
 
       {/* CARD TARIFS ET TAXES */}
-      <Card title="Tarifs et Taxes" style={{ marginTop: '1rem' }}>
-        <div className="tarifs-section">
+      <Card 
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <span>Tarifs et Taxes</span>
+            <button 
+              className="toggle-button"
+              onClick={() => setShowTarifsSection(!showTarifsSection)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1.5rem',
+                padding: '0.5rem',
+                borderRadius: '4px',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f0f0f0'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              {showTarifsSection ? '▼' : '▶'}
+            </button>
+          </div>
+        } 
+        style={{ marginTop: '1rem' }}
+      >
+        {showTarifsSection && (
+          <div className="tarifs-section">
           <div className="tarif-form">
             <h4>Ajouter un nouveau tarif</h4>
             <div className="form-row">
@@ -1034,6 +1257,7 @@ const Parametres = () => {
             )}
           </div>
         </div>
+        )}
       </Card>
     </div>
   );

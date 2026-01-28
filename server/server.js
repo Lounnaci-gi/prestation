@@ -103,7 +103,7 @@ let isConnected = false;
 connection.connect((err) => {
   if (err) {
     console.error('Erreur de connexion à la base de données:', err.message);
-    console.log('Mode simulation activé - le serveur fonctionnera avec des données factices');
+    
     isConnected = false;
   } else {
     console.log('Connexion réussie à la base de données SQL Server');
@@ -1383,7 +1383,7 @@ app.put('/api/devis/:id', async (req, res) => {
           { name: 'tauxTVA_Transport', type: 'decimal', value: parseFloat(parseFloat(tauxTVA_Transport > 10 ? tauxTVA_Transport / 100 : tauxTVA_Transport).toFixed(4)) || 0 }
         ];
 
-        console.log('Insertion ligne vente avec params:', ligneParams);
+        
 
         await new Promise((resolve, reject) => {
           executeQuery(ligneQuery, ligneParams, (err, results) => {
@@ -1391,7 +1391,7 @@ app.put('/api/devis/:id', async (req, res) => {
               console.error('Erreur lors de l\'insertion de la ligne de vente:', err);
               reject(err);
             } else {
-              console.log('Ligne de vente insérée avec succès');
+              
               resolve(results);
             }
           });
@@ -2159,7 +2159,7 @@ app.get('/api/users/profile', async (req, res) => {
 
 // Endpoint pour la mise à jour du profil utilisateur
 app.put('/api/users/profile', async (req, res) => {
-  console.log('Requête de mise à jour du profil reçue:', req.body, req.query);
+  
   const { nom, prenom, email, codeUtilisateur } = req.body;
   const userId = req.query.userId; // ou récupéré d'un token JWT
   
@@ -2394,6 +2394,153 @@ app.put('/api/users/change-password', async (req, res) => {
   } catch (error) {
     console.error('Erreur lors du changement de mot de passe:', error);
     res.status(500).json({ error: 'Erreur serveur lors du changement de mot de passe', details: error.message });
+  }
+});
+
+// Endpoint pour récupérer les paramètres de l'entreprise
+app.get('/api/parametres-entreprise', async (req, res) => {
+  if (!isConnected) {
+    return res.status(500).json({ error: 'Base de données non disponible' });
+  }
+  
+  try {
+    const query = 'SELECT * FROM ParametresEntreprise WHERE Actif = 1 ORDER BY ParamID DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY';
+    
+    const results = await new Promise((resolve, reject) => {
+      executeQuery(query, [], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+    
+    if (results && results.length > 0) {
+      res.json(results[0]);
+    } else {
+      // Si aucun paramètre n'existe, retourner un objet vide avec des valeurs par défaut
+      res.json({
+        ParamID: null,
+        NomEntreprise: '',
+        FormeJuridique: '',
+        NumeroRegistreCommerce: '',
+        NumeroIdentificationFiscale: '',
+        NumeroArticleImposition: '',
+        CapitalSocial: '',
+        AdresseSiegeSocial: '',
+        Wilaya: '',
+        CodePostal: '',
+        Commune: '',
+        TelephonePrincipal: '',
+        TelephoneSecondaire: '',
+        Fax: '',
+        EmailPrincipal: '',
+        EmailComptabilite: '',
+        SiteWeb: '',
+        NomBanque: '',
+        CodeBanque: '',
+        CodeAgence: '',
+        NumeroCompte: '',
+        CleRIB: '',
+        IBAN: '',
+        PrefixeEntreprise: 'ENT',
+        ExerciceComptable: new Date().getFullYear(),
+        RegimeTVA: 'REEL_NORMAL',
+        LogoPath: '',
+        CachetPath: '',
+        SignaturePath: '',
+        MentionsLegalesDevis: '',
+        MentionsLegalesFacture: '',
+        ConditionsGeneralesVente: '',
+        PiedDePageDevis: '',
+        PiedDePageFacture: ''
+      });
+    }
+  } catch (error) {
+    console.error('Erreur lors de la récupération des paramètres entreprise:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la récupération des paramètres entreprise', details: error.message });
+  }
+});
+
+// Endpoint pour mettre à jour les paramètres de l'entreprise
+app.put('/api/parametres-entreprise', async (req, res) => {
+  if (!isConnected) {
+    return res.status(500).json({ error: 'Base de données non disponible' });
+  }
+  
+  const parametres = req.body;
+  
+  try {
+    // Vérifier si des paramètres existent déjà
+    const checkQuery = 'SELECT COUNT(*) as count FROM ParametresEntreprise WHERE Actif = 1';
+    
+    const checkResults = await new Promise((resolve, reject) => {
+      executeQuery(checkQuery, [], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+    
+    const count = checkResults[0].count;
+    
+    let query, params;
+    
+    if (count > 0) {
+      // Mettre à jour les paramètres existants
+      query = `
+        UPDATE ParametresEntreprise 
+        SET 
+          NomEntreprise = @NomEntreprise,
+          AdresseSiegeSocial = @AdresseSiegeSocial,
+          TelephonePrincipal = @TelephonePrincipal,
+          EmailPrincipal = @EmailPrincipal,
+          PrefixeEntreprise = @PrefixeEntreprise,
+          ExerciceComptable = @ExerciceComptable,
+          DateModification = GETDATE()
+        WHERE Actif = 1
+      `;
+    } else {
+      // Insérer de nouveaux paramètres
+      query = `
+        INSERT INTO ParametresEntreprise (
+          NomEntreprise, AdresseSiegeSocial, TelephonePrincipal, EmailPrincipal, 
+          PrefixeEntreprise, ExerciceComptable
+        )
+        VALUES (
+          @NomEntreprise, @AdresseSiegeSocial, @TelephonePrincipal, @EmailPrincipal,
+          @PrefixeEntreprise, @ExerciceComptable
+        )
+      `;
+    }
+    
+    params = [
+      { name: 'NomEntreprise', type: 'nvarchar', value: parametres.NomEntreprise || '' },
+      { name: 'AdresseSiegeSocial', type: 'nvarchar', value: parametres.AdresseSiegeSocial || '' },
+      { name: 'TelephonePrincipal', type: 'varchar', value: parametres.TelephonePrincipal || '' },
+      { name: 'EmailPrincipal', type: 'varchar', value: parametres.EmailPrincipal || '' },
+      { name: 'PrefixeEntreprise', type: 'varchar', value: parametres.PrefixeEntreprise || 'ENT' },
+      { name: 'ExerciceComptable', type: 'int', value: parametres.ExerciceComptable || new Date().getFullYear() }
+    ];
+    
+    await new Promise((resolve, reject) => {
+      executeQuery(query, params, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+    
+    // Récupérer les paramètres mis à jour
+    const getQuery = 'SELECT * FROM ParametresEntreprise WHERE Actif = 1 ORDER BY ParamID DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY';
+    
+    const getResult = await new Promise((resolve, reject) => {
+      executeQuery(getQuery, [], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+    
+    res.json(getResult[0]);
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour des paramètres entreprise:', error);
+    res.status(500).json({ error: 'Erreur serveur lors de la mise à jour des paramètres entreprise', details: error.message });
   }
 });
 

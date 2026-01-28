@@ -525,3 +525,9 @@ NODE_ENV=development
 # Clé secrète JWT
 JWT_SECRET=7054d5974adc57fad20b71d52ee05d3d4009b2141181faba779e9b6b588fc3b293962737c437d3eca3aa7277695be6312ec8ee0bbc25fbbf751af4e74deabef4
 JWT_EXPIRES_IN=24h
+
+
+
+
+
+Invoke-RestMethod -Uri http://localhost:5000/api/register -Method Post -ContentType "application/json" -Body '{"nom":"Lounnaci","prenom":"User","email":"lounnaci@entreprise.com","password":"Lounnaci123@"}' -TimeoutSec 15
