@@ -32,6 +32,7 @@ Thumbs.db
 # IDE files
 .vscode/
 .idea/
+.qoder/
 *.swp
 *.swo
 *~

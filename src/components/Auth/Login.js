@@ -129,14 +129,14 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setSuccess('Connexion réussie! Redirection...');
         // Réinitialiser les tentatives échouées
         sessionStorage.removeItem('loginAttempts');
         sessionStorage.removeItem('loginLockTime');
         setFailedAttempts(0);
         // Utiliser le token JWT et les données utilisateur
         login(data.user, data.token);
-        setTimeout(() => navigate('/'), 1000);
+        // Redirection immédiate
+        navigate('/', { replace: true });
       } else {
         // Incrémenter le compteur de tentatives échouées
         const newAttempts = failedAttempts + 1;
