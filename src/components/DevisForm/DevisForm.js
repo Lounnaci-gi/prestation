@@ -661,14 +661,14 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
       </div>
 
       {/* Section 1: Type de Devis et Informations Générales */}
-      <div className="form-section">
+      <div className="form-section general-info-section">
         <div className="section-header">
           <div className="header-title">
             <span className="section-icon">📋</span>
             <h3 className="section-title">Informations Générales</h3>
           </div>
         </div>
-        <div className="form-grid">
+        <div className="form-column">
           <Select
             label="Type de Devis*"
             name="typeDossier"
@@ -689,6 +689,7 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
                 value={formData.dateDevis}
                 onChange={handleChange}
                 required
+                className="date-input"
               />
 
               <Select
