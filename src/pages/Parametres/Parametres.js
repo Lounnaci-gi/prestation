@@ -14,38 +14,20 @@ const Parametres = () => {
   const [parametresEntreprise, setParametresEntreprise] = useState({
     ParamID: null,
     NomEntreprise: '',
-    FormeJuridique: '',
-    NumeroRegistreCommerce: '',
-    NumeroIdentificationFiscale: '',
-    NumeroArticleImposition: '',
-    CapitalSocial: '',
     AdresseSiegeSocial: '',
-    Wilaya: '',
-    CodePostal: '',
-    Commune: '',
     TelephonePrincipal: '',
     TelephoneSecondaire: '',
     Fax: '',
     EmailPrincipal: '',
-    EmailComptabilite: '',
-    SiteWeb: '',
-    NomBanque: '',
-    CodeBanque: '',
-    CodeAgence: '',
-    NumeroCompte: '',
-    CleRIB: '',
-    IBAN: '',
     PrefixeEntreprise: 'ENT',
-    ExerciceComptable: new Date().getFullYear(),
-    RegimeTVA: 'REEL_NORMAL',
-    LogoPath: '',
-    CachetPath: '',
-    SignaturePath: '',
-    MentionsLegalesDevis: '',
-    MentionsLegalesFacture: '',
-    ConditionsGeneralesVente: '',
-    PiedDePageDevis: '',
-    PiedDePageFacture: ''
+    RegistreCommerce: '',
+    NumeroIdentificationFiscale: '',
+    NumeroArticleImposition: '',
+    Wilaya: '',
+    Commune: '',
+    CodePostal: '',
+    NomBanque: '',
+    NumeroCompte: ''
   });
 
   const [savingEntreprise, setSavingEntreprise] = useState(false);
@@ -160,6 +142,34 @@ const Parametres = () => {
       return;
     }
 
+    // Validation du format de l'email
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (parametresEntreprise.EmailPrincipal && !emailRegex.test(parametresEntreprise.EmailPrincipal)) {
+      await AlertService.warning('Format invalide', 'Veuillez vérifier le format de l\'email principal.', 'OK');
+      return;
+    }
+
+    // Vérifier la longueur des champs numériques
+    if (parametresEntreprise.TelephonePrincipal && parametresEntreprise.TelephonePrincipal.length !== 10) {
+      await AlertService.warning('Longueur invalide', 'Le téléphone principal doit contenir exactement 10 chiffres.', 'OK');
+      return;
+    }
+    
+    if (parametresEntreprise.TelephoneSecondaire && parametresEntreprise.TelephoneSecondaire.length > 10) {
+      await AlertService.warning('Longueur invalide', 'Le téléphone secondaire ne doit pas dépasser 10 chiffres.', 'OK');
+      return;
+    }
+    
+    if (parametresEntreprise.Fax && parametresEntreprise.Fax.length > 10) {
+      await AlertService.warning('Longueur invalide', 'Le fax ne doit pas dépasser 10 chiffres.', 'OK');
+      return;
+    }
+    
+    if (parametresEntreprise.CodePostal && parametresEntreprise.CodePostal.length > 5) {
+      await AlertService.warning('Longueur invalide', 'Le code postal ne doit pas dépasser 5 chiffres.', 'OK');
+      return;
+    }
+
     // Demander une confirmation avant de sauvegarder
     const result = await AlertService.confirm(
       'Confirmation',
@@ -196,7 +206,7 @@ const Parametres = () => {
   // Fonction pour mettre à jour un champ des paramètres entreprise
   const handleChangeParametreEntreprise = (fieldName, value) => {
     // Validation spécifique pour le Registre de Commerce
-    if (fieldName === 'NumeroRegistreCommerce') {
+    if (fieldName === 'RegistreCommerce') {
       // Ne garder que les chiffres
       const numericValue = value.replace(/[^0-9]/g, '');
       // Limiter à 11 chiffres
@@ -243,6 +253,48 @@ const Parametres = () => {
       const numericValue = value.replace(/[^0-9]/g, '');
       // Limiter à 5 chiffres
       if (numericValue.length <= 5) {
+        setParametresEntreprise(prev => ({
+          ...prev,
+          [fieldName]: numericValue
+        }));
+      }
+      return;
+    }
+    
+    // Validation spécifique pour le Registre de Commerce
+    if (fieldName === 'RegistreCommerce') {
+      // Ne garder que les chiffres
+      const numericValue = value.replace(/[^0-9]/g, '');
+      // Limiter à 12 chiffres selon la spécification
+      if (numericValue.length <= 12) {
+        setParametresEntreprise(prev => ({
+          ...prev,
+          [fieldName]: numericValue
+        }));
+      }
+      return;
+    }
+    
+    // Validation spécifique pour le Numéro d'Identification Fiscale
+    if (fieldName === 'NumeroIdentificationFiscale') {
+      // Ne garder que les chiffres
+      const numericValue = value.replace(/[^0-9]/g, '');
+      // Limiter à 18 chiffres selon la spécification
+      if (numericValue.length <= 18) {
+        setParametresEntreprise(prev => ({
+          ...prev,
+          [fieldName]: numericValue
+        }));
+      }
+      return;
+    }
+    
+    // Validation spécifique pour le N° Article d'Imposition
+    if (fieldName === 'NumeroArticleImposition') {
+      // Ne garder que les chiffres
+      const numericValue = value.replace(/[^0-9]/g, '');
+      // Limiter à 11 chiffres
+      if (numericValue.length <= 11) {
         setParametresEntreprise(prev => ({
           ...prev,
           [fieldName]: numericValue
@@ -560,30 +612,15 @@ const Parametres = () => {
             <h4>Informations Générales</h4>
             <div className="form-grid">
               <div className="setting-item">
-                <label className="setting-label">Nom de l'entreprise <span style={{color: 'red'}}>*</span></label>
+                <label className="setting-label">Nom de l'entreprise <span style={{color: 'red', fontWeight: 'bold'}}>*</span></label>
                 <input 
                   type="text" 
                   className="setting-input" 
                   value={parametresEntreprise.NomEntreprise}
                   onChange={(e) => handleChangeParametreEntreprise('NomEntreprise', e.target.value)}
                   placeholder="Nom de l'entreprise"
+                  style={{ borderColor: parametresEntreprise.NomEntreprise ? '#28a745' : '#ced4da' }}
                 />
-              </div>
-
-              <div className="setting-item">
-                <label className="setting-label">Forme Juridique</label>
-                <select 
-                  className="setting-input"
-                  value={parametresEntreprise.FormeJuridique || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('FormeJuridique', e.target.value)}
-                >
-                  <option value="">Sélectionner...</option>
-                  <option value="SARL">SARL</option>
-                  <option value="SPA">SPA</option>
-                  <option value="EURL">EURL</option>
-                  <option value="SARL-U">SARL-U</option>
-                  <option value="PNC">PNC</option>
-                </select>
               </div>
 
               <div className="setting-item">
@@ -592,10 +629,10 @@ const Parametres = () => {
                   <input 
                     type="text" 
                     className="setting-input" 
-                    value={parametresEntreprise.NumeroRegistreCommerce || ''}
-                    onChange={(e) => handleChangeParametreEntreprise('NumeroRegistreCommerce', e.target.value)}
+                    value={parametresEntreprise.RegistreCommerce || ''}
+                    onChange={(e) => handleChangeParametreEntreprise('RegistreCommerce', e.target.value)}
                     placeholder="RC"
-                    maxLength="11"
+                    maxLength="12"
                   />
                   <div style={{ 
                     position: 'absolute', 
@@ -606,7 +643,19 @@ const Parametres = () => {
                     color: '#666',
                     pointerEvents: 'none'
                   }}>
-                    {parametresEntreprise.NumeroRegistreCommerce?.length || 0}/11
+                    {parametresEntreprise.RegistreCommerce?.length || 0}/12
+                  </div>
+                  <div style={{ 
+                    position: 'absolute', 
+                    left: '-20px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    fontSize: '0.9rem', 
+                    color: '#007bff',
+                    cursor: 'help'
+                  }}
+                  title="Format: 12 chiffres maximum">
+                    ⓘ
                   </div>
                 </div>
               </div>
@@ -620,7 +669,7 @@ const Parametres = () => {
                     value={parametresEntreprise.NumeroIdentificationFiscale || ''}
                     onChange={(e) => handleChangeParametreEntreprise('NumeroIdentificationFiscale', e.target.value)}
                     placeholder="NIF"
-                    maxLength="15"
+                    maxLength="18"
                   />
                   <div style={{ 
                     position: 'absolute', 
@@ -631,7 +680,7 @@ const Parametres = () => {
                     color: '#666',
                     pointerEvents: 'none'
                   }}>
-                    {parametresEntreprise.NumeroIdentificationFiscale?.length || 0}/15
+                    {parametresEntreprise.NumeroIdentificationFiscale?.length || 0}/18
                   </div>
                 </div>
               </div>
@@ -661,26 +710,15 @@ const Parametres = () => {
                 </div>
               </div>
 
-              <div className="setting-item">
-                <label className="setting-label">Capital Social (DZD)</label>
-                <input 
-                  type="number" 
-                  className="setting-input" 
-                  value={parametresEntreprise.CapitalSocial || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('CapitalSocial', e.target.value)}
-                  placeholder="Capital social"
-                  step="0.01"
-                />
-              </div>
-
               <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
-                <label className="setting-label">Adresse du Siège Social <span style={{color: 'red'}}>*</span></label>
+                <label className="setting-label">Adresse du Siège Social <span style={{color: 'red', fontWeight: 'bold'}}>*</span></label>
                 <input 
                   type="text" 
                   className="setting-input" 
                   value={parametresEntreprise.AdresseSiegeSocial}
                   onChange={(e) => handleChangeParametreEntreprise('AdresseSiegeSocial', e.target.value)}
                   placeholder="Adresse complète"
+                  style={{ borderColor: parametresEntreprise.AdresseSiegeSocial ? '#28a745' : '#ced4da' }}
                 />
               </div>
 
@@ -758,6 +796,18 @@ const Parametres = () => {
                   }}>
                     {parametresEntreprise.TelephonePrincipal?.length || 0}/10
                   </div>
+                  <div style={{ 
+                    position: 'absolute', 
+                    left: '-20px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    fontSize: '0.9rem', 
+                    color: '#007bff',
+                    cursor: 'help'
+                  }}
+                  title="Format: 10 chiffres">
+                    ⓘ
+                  </div>
                 </div>
               </div>
 
@@ -812,36 +862,29 @@ const Parametres = () => {
               </div>
 
               <div className="setting-item">
-                <label className="setting-label">Email Principal <span style={{color: 'red'}}>*</span></label>
-                <input 
-                  type="email" 
-                  className="setting-input" 
-                  value={parametresEntreprise.EmailPrincipal}
-                  onChange={(e) => handleChangeParametreEntreprise('EmailPrincipal', e.target.value)}
-                  placeholder="contact@entreprise.com"
-                />
-              </div>
-
-              <div className="setting-item">
-                <label className="setting-label">Email Comptabilité</label>
-                <input 
-                  type="email" 
-                  className="setting-input" 
-                  value={parametresEntreprise.EmailComptabilite || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('EmailComptabilite', e.target.value)}
-                  placeholder="comptabilite@entreprise.com"
-                />
-              </div>
-
-              <div className="setting-item">
-                <label className="setting-label">Site Web</label>
-                <input 
-                  type="url" 
-                  className="setting-input" 
-                  value={parametresEntreprise.SiteWeb || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('SiteWeb', e.target.value)}
-                  placeholder="www.entreprise.com"
-                />
+                <label className="setting-label">Email Principal <span style={{color: 'red', fontWeight: 'bold'}}>*</span></label>
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="email" 
+                    className="setting-input" 
+                    value={parametresEntreprise.EmailPrincipal}
+                    onChange={(e) => handleChangeParametreEntreprise('EmailPrincipal', e.target.value)}
+                    placeholder="contact@entreprise.com"
+                    style={{ borderColor: parametresEntreprise.EmailPrincipal ? '#28a745' : '#ced4da' }}
+                  />
+                  <div style={{ 
+                    position: 'absolute', 
+                    left: '-20px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    fontSize: '0.9rem', 
+                    color: '#007bff',
+                    cursor: 'help'
+                  }}
+                  title="Format: exemple@domaine.com">
+                    ⓘ
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -861,28 +904,6 @@ const Parametres = () => {
               </div>
 
               <div className="setting-item">
-                <label className="setting-label">Code Banque</label>
-                <input 
-                  type="text" 
-                  className="setting-input" 
-                  value={parametresEntreprise.CodeBanque || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('CodeBanque', e.target.value)}
-                  placeholder="Code banque"
-                />
-              </div>
-
-              <div className="setting-item">
-                <label className="setting-label">Code Agence</label>
-                <input 
-                  type="text" 
-                  className="setting-input" 
-                  value={parametresEntreprise.CodeAgence || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('CodeAgence', e.target.value)}
-                  placeholder="Code agence"
-                />
-              </div>
-
-              <div className="setting-item">
                 <label className="setting-label">Numéro de Compte</label>
                 <input 
                   type="text" 
@@ -890,28 +911,6 @@ const Parametres = () => {
                   value={parametresEntreprise.NumeroCompte || ''}
                   onChange={(e) => handleChangeParametreEntreprise('NumeroCompte', e.target.value)}
                   placeholder="Numéro de compte"
-                />
-              </div>
-
-              <div className="setting-item">
-                <label className="setting-label">Clé RIB</label>
-                <input 
-                  type="text" 
-                  className="setting-input" 
-                  value={parametresEntreprise.CleRIB || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('CleRIB', e.target.value)}
-                  placeholder="Clé RIB"
-                />
-              </div>
-
-              <div className="setting-item">
-                <label className="setting-label">IBAN</label>
-                <input 
-                  type="text" 
-                  className="setting-input" 
-                  value={parametresEntreprise.IBAN || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('IBAN', e.target.value)}
-                  placeholder="IBAN"
                 />
               </div>
             </div>
@@ -931,139 +930,41 @@ const Parametres = () => {
                   maxLength="10"
                 />
               </div>
-
-              <div className="setting-item">
-                <label className="setting-label">Exercice Comptable</label>
-                <input 
-                  type="number" 
-                  className="setting-input" 
-                  value={parametresEntreprise.ExerciceComptable || new Date().getFullYear()}
-                  onChange={(e) => handleChangeParametreEntreprise('ExerciceComptable', parseInt(e.target.value))}
-                  placeholder="Année"
-                />
-              </div>
-
-              <div className="setting-item">
-                <label className="setting-label">Régime TVA</label>
-                <select 
-                  className="setting-input"
-                  value={parametresEntreprise.RegimeTVA || 'REEL_NORMAL'}
-                  onChange={(e) => handleChangeParametreEntreprise('RegimeTVA', e.target.value)}
-                >
-                  <option value="REEL_NORMAL">Réel Normal</option>
-                  <option value="REEL_SIMPLIFIE">Réel Simplifié</option>
-                  <option value="FORFAIT">Forfait</option>
-                </select>
-              </div>
             </div>
           </div>
 
-          <div className="form-section">
-            <h4>Chemins des Ressources (Logos, Signatures, etc.)</h4>
-            <div className="form-grid">
-              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
-                <label className="setting-label">Chemin du Logo</label>
-                <input 
-                  type="text" 
-                  className="setting-input" 
-                  value={parametresEntreprise.LogoPath || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('LogoPath', e.target.value)}
-                  placeholder="/images/logo.png"
-                />
-              </div>
 
-              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
-                <label className="setting-label">Chemin du Cachet</label>
-                <input 
-                  type="text" 
-                  className="setting-input" 
-                  value={parametresEntreprise.CachetPath || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('CachetPath', e.target.value)}
-                  placeholder="/images/cachet.png"
-                />
-              </div>
-
-              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
-                <label className="setting-label">Chemin de la Signature</label>
-                <input 
-                  type="text" 
-                  className="setting-input" 
-                  value={parametresEntreprise.SignaturePath || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('SignaturePath', e.target.value)}
-                  placeholder="/images/signature.png"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-section">
-            <h4>Textes Personnalisables pour Documents</h4>
-            <div className="form-grid">
-              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
-                <label className="setting-label">Mentions Légales (Devis)</label>
-                <textarea 
-                  className="setting-input textarea-input" 
-                  value={parametresEntreprise.MentionsLegalesDevis || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('MentionsLegalesDevis', e.target.value)}
-                  placeholder="Mentions légales pour les devis"
-                  rows="3"
-                />
-              </div>
-
-              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
-                <label className="setting-label">Mentions Légales (Facture)</label>
-                <textarea 
-                  className="setting-input textarea-input" 
-                  value={parametresEntreprise.MentionsLegalesFacture || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('MentionsLegalesFacture', e.target.value)}
-                  placeholder="Mentions légales pour les factures"
-                  rows="3"
-                />
-              </div>
-
-              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
-                <label className="setting-label">Conditions Générales de Vente</label>
-                <textarea 
-                  className="setting-input textarea-input" 
-                  value={parametresEntreprise.ConditionsGeneralesVente || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('ConditionsGeneralesVente', e.target.value)}
-                  placeholder="Conditions générales de vente"
-                  rows="4"
-                />
-              </div>
-
-              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
-                <label className="setting-label">Pied de Page (Devis)</label>
-                <textarea 
-                  className="setting-input textarea-input" 
-                  value={parametresEntreprise.PiedDePageDevis || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('PiedDePageDevis', e.target.value)}
-                  placeholder="Pied de page pour les devis"
-                  rows="3"
-                />
-              </div>
-
-              <div className="setting-item" style={{ gridColumn: '1 / -1' }}>
-                <label className="setting-label">Pied de Page (Facture)</label>
-                <textarea 
-                  className="setting-input textarea-input" 
-                  value={parametresEntreprise.PiedDePageFacture || ''}
-                  onChange={(e) => handleChangeParametreEntreprise('PiedDePageFacture', e.target.value)}
-                  placeholder="Pied de page pour les factures"
-                  rows="3"
-                />
-              </div>
-            </div>
-          </div>
 
           <div className="form-actions">
             <button 
               className="btn btn-primary" 
               onClick={handleSaveParametresEntreprise}
               disabled={savingEntreprise}
+              style={{
+                minWidth: '200px',
+                transition: 'all 0.3s ease'
+              }}
             >
-              {savingEntreprise ? 'Sauvegarde en cours...' : '💾 Sauvegarder les paramètres'}
+              {savingEntreprise ? (
+                <>
+                  <span style={{ marginRight: '8px' }}>⏳</span>
+                  Sauvegarde en cours...
+                </>
+              ) : (
+                <>
+                  <span style={{ marginRight: '8px' }}>💾</span>
+                  Sauvegarder les paramètres
+                </>
+              )}
             </button>
+            <div style={{ 
+              marginTop: '10px', 
+              fontSize: '0.8rem', 
+              color: '#666',
+              fontStyle: 'italic'
+            }}>
+              * Champs obligatoires
+            </div>
           </div>
         </div>
         )}

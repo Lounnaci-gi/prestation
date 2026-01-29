@@ -247,14 +247,23 @@ CREATE TABLE ParametresEntreprise (
     NomEntreprise NVARCHAR(200) NOT NULL,
     AdresseSiegeSocial NVARCHAR(MAX) NULL,
     TelephonePrincipal VARCHAR(20) NULL,
+    TelephoneSecondaire VARCHAR(20) NULL,
+    Fax VARCHAR(20) NULL,
     EmailPrincipal VARCHAR(100) NULL,
     PrefixeEntreprise VARCHAR(10) NOT NULL DEFAULT 'ENT',
-    ExerciceComptable INT NOT NULL DEFAULT 2026,
+    RegistreCommerce VARCHAR(50) NULL,
+    NumeroIdentificationFiscale VARCHAR(50) NULL,
+    NumeroArticleImposition VARCHAR(50) NULL,
+    Wilaya NVARCHAR(100) NULL,
+    Commune NVARCHAR(100) NULL,
+    CodePostal VARCHAR(10) NULL,
+    NomBanque NVARCHAR(200) NULL,
+    NumeroCompte VARCHAR(50) NULL,
     DateCreation DATETIME DEFAULT GETDATE(),
     DateModification DATETIME DEFAULT GETDATE(),
     Actif BIT DEFAULT 1
 );
-PRINT 'Table ParametresEntreprise cr��e';
+PRINT 'Table ParametresEntreprise créée';
 GO
 
 -- ================================================================

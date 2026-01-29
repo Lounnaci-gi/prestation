@@ -2420,38 +2420,20 @@ app.get('/api/parametres-entreprise', async (req, res) => {
       res.json({
         ParamID: null,
         NomEntreprise: '',
-        FormeJuridique: '',
-        NumeroRegistreCommerce: '',
-        NumeroIdentificationFiscale: '',
-        NumeroArticleImposition: '',
-        CapitalSocial: '',
         AdresseSiegeSocial: '',
-        Wilaya: '',
-        CodePostal: '',
-        Commune: '',
         TelephonePrincipal: '',
         TelephoneSecondaire: '',
         Fax: '',
         EmailPrincipal: '',
-        EmailComptabilite: '',
-        SiteWeb: '',
-        NomBanque: '',
-        CodeBanque: '',
-        CodeAgence: '',
-        NumeroCompte: '',
-        CleRIB: '',
-        IBAN: '',
         PrefixeEntreprise: 'ENT',
-        ExerciceComptable: new Date().getFullYear(),
-        RegimeTVA: 'REEL_NORMAL',
-        LogoPath: '',
-        CachetPath: '',
-        SignaturePath: '',
-        MentionsLegalesDevis: '',
-        MentionsLegalesFacture: '',
-        ConditionsGeneralesVente: '',
-        PiedDePageDevis: '',
-        PiedDePageFacture: ''
+        RegistreCommerce: '',
+        NumeroIdentificationFiscale: '',
+        NumeroArticleImposition: '',
+        Wilaya: '',
+        Commune: '',
+        CodePostal: '',
+        NomBanque: '',
+        NumeroCompte: ''
       });
     }
   } catch (error) {
@@ -2491,9 +2473,18 @@ app.put('/api/parametres-entreprise', async (req, res) => {
           NomEntreprise = @NomEntreprise,
           AdresseSiegeSocial = @AdresseSiegeSocial,
           TelephonePrincipal = @TelephonePrincipal,
+          TelephoneSecondaire = @TelephoneSecondaire,
+          Fax = @Fax,
           EmailPrincipal = @EmailPrincipal,
           PrefixeEntreprise = @PrefixeEntreprise,
-          ExerciceComptable = @ExerciceComptable,
+          RegistreCommerce = @RegistreCommerce,
+          NumeroIdentificationFiscale = @NumeroIdentificationFiscale,
+          NumeroArticleImposition = @NumeroArticleImposition,
+          Wilaya = @Wilaya,
+          Commune = @Commune,
+          CodePostal = @CodePostal,
+          NomBanque = @NomBanque,
+          NumeroCompte = @NumeroCompte,
           DateModification = GETDATE()
         WHERE Actif = 1
       `;
@@ -2501,12 +2492,16 @@ app.put('/api/parametres-entreprise', async (req, res) => {
       // Insérer de nouveaux paramètres
       query = `
         INSERT INTO ParametresEntreprise (
-          NomEntreprise, AdresseSiegeSocial, TelephonePrincipal, EmailPrincipal, 
-          PrefixeEntreprise, ExerciceComptable
+          NomEntreprise, AdresseSiegeSocial, TelephonePrincipal, TelephoneSecondaire, 
+          Fax, EmailPrincipal, PrefixeEntreprise, RegistreCommerce, 
+          NumeroIdentificationFiscale, NumeroArticleImposition, Wilaya, Commune, 
+          CodePostal, NomBanque, NumeroCompte
         )
         VALUES (
-          @NomEntreprise, @AdresseSiegeSocial, @TelephonePrincipal, @EmailPrincipal,
-          @PrefixeEntreprise, @ExerciceComptable
+          @NomEntreprise, @AdresseSiegeSocial, @TelephonePrincipal, @TelephoneSecondaire,
+          @Fax, @EmailPrincipal, @PrefixeEntreprise, @RegistreCommerce,
+          @NumeroIdentificationFiscale, @NumeroArticleImposition, @Wilaya, @Commune,
+          @CodePostal, @NomBanque, @NumeroCompte
         )
       `;
     }
@@ -2515,9 +2510,18 @@ app.put('/api/parametres-entreprise', async (req, res) => {
       { name: 'NomEntreprise', type: 'nvarchar', value: parametres.NomEntreprise || '' },
       { name: 'AdresseSiegeSocial', type: 'nvarchar', value: parametres.AdresseSiegeSocial || '' },
       { name: 'TelephonePrincipal', type: 'varchar', value: parametres.TelephonePrincipal || '' },
+      { name: 'TelephoneSecondaire', type: 'varchar', value: parametres.TelephoneSecondaire || '' },
+      { name: 'Fax', type: 'varchar', value: parametres.Fax || '' },
       { name: 'EmailPrincipal', type: 'varchar', value: parametres.EmailPrincipal || '' },
       { name: 'PrefixeEntreprise', type: 'varchar', value: parametres.PrefixeEntreprise || 'ENT' },
-      { name: 'ExerciceComptable', type: 'int', value: parametres.ExerciceComptable || new Date().getFullYear() }
+      { name: 'RegistreCommerce', type: 'varchar', value: parametres.RegistreCommerce || '' },
+      { name: 'NumeroIdentificationFiscale', type: 'varchar', value: parametres.NumeroIdentificationFiscale || '' },
+      { name: 'NumeroArticleImposition', type: 'varchar', value: parametres.NumeroArticleImposition || '' },
+      { name: 'Wilaya', type: 'nvarchar', value: parametres.Wilaya || '' },
+      { name: 'Commune', type: 'nvarchar', value: parametres.Commune || '' },
+      { name: 'CodePostal', type: 'varchar', value: parametres.CodePostal || '' },
+      { name: 'NomBanque', type: 'nvarchar', value: parametres.NomBanque || '' },
+      { name: 'NumeroCompte', type: 'varchar', value: parametres.NumeroCompte || '' }
     ];
     
     await new Promise((resolve, reject) => {
