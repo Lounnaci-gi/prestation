@@ -21,16 +21,17 @@
 
 .input {
   width: 100%;
-  padding: var(--spacing-3) var(--spacing-4);
-  font-size: var(--text-sm);
-  border: 1.5px solid var(--secondary-300);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-base);
-  font-family: var(--font-sans);
+  max-width: 100px;
+  padding: 0.125rem 0.25rem;
+  font-size: 0.8125rem;
+  border: 1px solid var(--secondary-300);
+  border-radius: 0.125rem;
+  font-family: inherit;
   color: var(--secondary-800);
   background-color: white;
-  box-shadow: var(--shadow-inner);
-  line-height: var(--line-height-normal);
+  line-height: 1.2;
+  height: 1.5rem;
+  box-sizing: border-box;
 }
 
 .input::placeholder {
@@ -44,9 +45,7 @@
 .input:focus {
   outline: none;
   border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(0, 132, 199, 0.15), var(--shadow-inner);
   background-color: #f9fafb;
-  transform: translateY(-2px);
 }
 
 .input:disabled {

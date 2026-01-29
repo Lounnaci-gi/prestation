@@ -283,7 +283,12 @@
   color: var(--primary-600);
 }
 
-/* ===== TABLE DES CITERNES ===== */
+.citerne-table td input {
+  padding: 0.125rem 0.25rem;
+  height: 1.5rem;
+  font-size: 0.8125rem;
+  width: 80px;
+}
 .citerne-table-container {
   margin: 1rem 0;
   border-radius: 0.5rem;
@@ -304,7 +309,7 @@
 }
 
 .citerne-table th {
-  padding: 0.75rem;
+  padding: 0.0625rem;
   text-align: left;
   font-weight: 600;
   color: var(--secondary-700);
@@ -314,7 +319,7 @@
 }
 
 .citerne-table td {
-  padding: 0.75rem;
+  padding: 0.25rem;
   border-bottom: 1px solid #e9ecef;
   color: var(--secondary-700);
 }
