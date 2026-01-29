@@ -811,43 +811,45 @@ const DevisForm = ({ onSubmit, onCancel, initialData = null }) => {
       )}
 
       {formData.typeDossier && formData.clientId && (
-        <div className="form-section">
+        <div className="form-section pricing-info-section">
           <div className="section-header">
             <div className="header-title">
               <span className="section-icon">💧</span>
               <h3 className="section-title">Paramètres de Prestation</h3>
             </div>
           </div>
-          
-          {/* Affichage des tarifs applicables */}
-          <div className="tarifs-display">
-            <div className="tarif-card">
-              <div className="tarif-label">Prix Unitaire Eau HT</div>
-              <div className="tarif-value">
-                {formData.typeDossier ? (
-                  (() => {
-                    const tarifType = formData.typeDossier === 'CITERNAGE' ? 'CITERNAGE' : 
-                                    formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
-                                    formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
-                    const tarif = tarifType ? getTarifByType(tarifType) : null;
-                    return tarif ? `${tarif.PrixHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD/m³` : 'Non disponible';
-                  })()
-                ) : 'Sélectionnez un type'}
+                
+          {/* Affichage des tarifs applicables dans un petit div à droite */}
+          <div className="pricing-info-container">
+            <div className="tarifs-display-small">
+              <div className="tarif-card-small">
+                <div className="tarif-label-small">Prix Unitaire Eau HT</div>
+                <div className="tarif-value-small">
+                  {formData.typeDossier ? (
+                    (() => {
+                      const tarifType = formData.typeDossier === 'CITERNAGE' ? 'CITERNAGE' : 
+                                      formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
+                                      formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
+                      const tarif = tarifType ? getTarifByType(tarifType) : null;
+                      return tarif ? `${tarif.PrixHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD/m³` : 'Non disponible';
+                    })()
+                  ) : 'Sélectionnez un type'}
+                </div>
               </div>
-            </div>
-
-            <div className="tarif-card">
-              <div className="tarif-label">Taux TVA Eau</div>
-              <div className="tarif-value">
-                {formData.typeDossier ? (
-                  (() => {
-                    const tarifType = formData.typeDossier === 'CITERNAGE' ? 'CITERNAGE' : 
-                                    formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
-                                    formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
-                    const tarif = tarifType ? getTarifByType(tarifType) : null;
-                    return tarif ? `${(tarif.TauxTVA * 100).toLocaleString('fr-DZ', { minimumFractionDigits: 0 })} %` : 'Non disponible';
-                  })()
-                ) : 'Sélectionnez un type'}
+      
+              <div className="tarif-card-small">
+                <div className="tarif-label-small">Taux TVA Eau</div>
+                <div className="tarif-value-small">
+                  {formData.typeDossier ? (
+                    (() => {
+                      const tarifType = formData.typeDossier === 'CITERNAGE' ? 'CITERNAGE' : 
+                                      formData.typeDossier === 'PROCES_VOL' ? 'VOL' : 
+                                      formData.typeDossier === 'ESSAI_RESEAU' ? 'ESSAI' : '';
+                      const tarif = tarifType ? getTarifByType(tarifType) : null;
+                      return tarif ? `${(tarif.TauxTVA * 100).toLocaleString('fr-DZ', { minimumFractionDigits: 0 })} %` : 'Non disponible';
+                    })()
+                  ) : 'Sélectionnez un type'}
+                </div>
               </div>
             </div>
           </div>

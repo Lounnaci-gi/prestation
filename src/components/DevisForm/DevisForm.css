@@ -171,7 +171,7 @@
 
 .form-column {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   margin-bottom: 0.5rem;
   width: 100%;
@@ -206,6 +206,52 @@
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   margin: 1rem 0;
+}
+
+/* Nouveau style pour les informations de prix à droite */
+.pricing-info-section {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin: 1rem 0;
+}
+
+.pricing-info-container {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.tarifs-display-small {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: white;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid #e9ecef;
+  min-width: 200px;
+  max-width: 250px;
+}
+
+.tarif-card-small {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tarif-label-small {
+  font-size: 0.75rem;
+  color: var(--secondary-600);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.tarif-value-small {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary-600);
 }
 
 .tarif-card {
